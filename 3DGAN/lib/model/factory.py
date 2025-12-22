@@ -16,13 +16,13 @@ def get_model(dataset_name):
     from .singleView_CTGAN import CTGAN
     return CTGAN
   elif dataset_name == 'SingleView-AECT-GAN':
-    from .sin_AECT-GAN import CTGAN
+    from .sin_AECT_GAN import CTGAN
     return CTGAN
   elif dataset_name == 'MultiViewCTGAN':
     from .multiView_CTGAN import CTGAN
     return CTGAN
   elif dataset_name == 'MultiView-AECT-GAN':
-    from .mul_AECT-GAN import CTGAN
+    from .mul_AECT_GAN import CTGAN
     return CTGAN
   else:
     raise KeyError('Model class should select from simpleGan / GD2dGAN ')
