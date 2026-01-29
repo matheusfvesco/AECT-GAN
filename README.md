@@ -76,9 +76,33 @@ AECT-GAN/:
 Please use the following example settings to test our model. 
  
 1. **Single-view Input Parameters for Test Script：**  
-python3 test.py --ymlpath=./experiment/singleview2500/d2_singleview2500.yml --gpu=0 --dataroot=./data/LIDC-HDF5-256 --dataset=test --tag=d2_singleview2500 --data=LIDC256 --dataset_class=align_ct_xray_std --model_class=SingleView-AECT-GAN --datasetfile=/data/LIDC-HDF5-256/test.txt --resultdir=/data/chengsq/AECT-GAN/model_dic/Sig_AECT-GAN --check_point=90 --how_many=3   
+python3 test.py \
+--ymlpath=./experiment/singleview2500/d2_singleview2500.yml \
+--gpu=0 \
+--dataroot=./data/LIDC-HDF5-256 \
+--dataset=test \
+--tag=d2_singleview2500 \
+--data=data/chengsq/AECT-GAN/model_dic/Sig_AECT-GAN \
+--dataset_class=align_ct_xray_std \
+--model_class=SingleView-AECT-GAN \
+--datasetfile=./data/test.txt \
+--resultdir=./save_models/singleView_CTGAN \
+--check_point=90 \
+--how_many=3
 2. **Multi-view Input Parameters for Test Script：**  
-python3 test.py --ymlpath=./experiment/multiview2500/d2_multiview2500.yml --gpu=0 --dataroot=./data/LIDC-HDF5-256 --dataset=test --tag=d2_multiview2500 --data=LIDC256 --dataset_class=align_ct_xray_views_std --model_class=MultiView-AECT-GAN --datasetfile=/data/LIDC-HDF5-256/test.txt --resultdir=/data/chengsq/AECT-GAN/model_dic/MultiView-AECT-GAN --check_point=90 --how_many=3
+python3 test.py \
+--ymlpath=./experiment/multiview2500/d2_multiview2500.yml \
+--gpu=0 \
+--dataroot=./data/LIDC-HDF5-256 \
+--dataset=test \
+--tag=d2_multiview2500 \
+--data=data/chengsq/AECT-GAN/model_dic/MultiView-AECT-GAN \
+--dataset_class=align_ct_xray_views_std \
+--model_class=MultiView-AECT-GAN \
+--datasetfile=./data/test.txt \
+--resultdir=./save_models/multiView_CTGAN \
+--check_point=90 \
+--how_many=3
 
 ### Train from Scratch
 Please use the following example settings to train your model. 
