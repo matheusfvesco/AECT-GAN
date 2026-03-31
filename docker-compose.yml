@@ -1,0 +1,70 @@
+# ============================================================
+# X2CT Docker Compose
+# Spins up both the FastAPI backend and Next.js frontend
+# API has GPU access via nvidia-container-toolkit
+# ============================================================
+
+services:
+  api:
+    build:
+      context: ./API
+      dockerfile: Dockerfile
+    container_name: x2ct-api
+    ports:
+      - "8001:8001"
+    volumes:
+      # Mount weights directory for model access
+      - ./API/weights:/app/weights:ro
+      # Ephemeral uploads - tmpfs for privacy
+      - type: tmpfs
+        target: /app/uploads
+        tmpfs:
+          size: 1024M
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    shm_size: '2gb'
+    ulimits:
+      memlock: -1
+      stack: 67108864
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - CUDA_VISIBLE_DEVICES=0
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  frontend:
+    build:
+      context: ./FRONTEND
+      dockerfile: Dockerfile
+      target: development
+    container_name: x2ct-frontend
+    ports:
+      - "3005:3000"
+    volumes:
+      - ./FRONTEND:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://localhost:8001
+      - API_URL=http://api:8001
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+# Network configuration
+networks:
+  default:
+    name: x2ct-network
+    driver: bridge
