@@ -1,7 +1,7 @@
 # ------------------------------------------------------------------------------
 # Copyright (c) Tencent
-# Licensed under the GPLv3 License.
-# Created by Kai Ma (makai0324@gmail.com)
+
+# Created by Shuangqin Cheng (sqcheng@stu2021.jnu.edu.cn)
 # ------------------------------------------------------------------------------
 
 from __future__ import print_function
@@ -9,10 +9,20 @@ from __future__ import absolute_import
 from __future__ import division
 
 import functools
-from .encoder_decoder_utils import *
+import torch.nn as nn
+import torch
+import numpy as np
+
+# Import from local encoder_decoder_utils
+from .encoder_decoder_3dgan import (
+    Upsample_3DUnit,
+    Dense_2DBlock,
+    Dimension_UpsampleCutBlock,
+    Transposed_And_Add,
+)
 
 
-def UNetLike_DownStep5(input_shape, encoder_input_channels, decoder_output_channels, decoder_out_activation, encoder_norm_layer, decoder_norm_layer, upsample_mode, decoder_feature_out=False):
+def UNetLike_DownStep5(input_shape, encoder_input_channels, decoder_output_channels, decoder_out_activation, encoder_norm_layer, decoder_norm_layer, upsample_mode, decoder_feature_out=False, isMulView=False):
   # 64, 32, 16, 8, 4
   encoder_block_list = [6, 12, 24, 16, 6]
   decoder_block_list = [1, 2, 2, 2, 2, 0]
@@ -20,20 +30,65 @@ def UNetLike_DownStep5(input_shape, encoder_input_channels, decoder_output_chann
   encoder_channel_list = [64]
   decoder_channel_list = [16, 16, 32, 64, 128, 256]
   decoder_begin_size = input_shape // pow(2, len(encoder_block_list))
-  return UNetLike_DenseDimensionNet(encoder_input_channels, decoder_output_channels, decoder_begin_size, encoder_block_list, decoder_block_list, growth_rate, encoder_channel_list, decoder_channel_list, decoder_out_activation, encoder_norm_layer, decoder_norm_layer, upsample_mode, decoder_feature_out)
+  return UNetLike_DenseDimensionNet(encoder_input_channels, decoder_output_channels, decoder_begin_size, encoder_block_list, decoder_block_list, growth_rate, encoder_channel_list, decoder_channel_list, decoder_out_activation, encoder_norm_layer, decoder_norm_layer, upsample_mode, decoder_feature_out, isMulView)
 
-def UNetLike_DownStep5_3(input_shape, encoder_input_channels, decoder_output_channels, decoder_out_activation, encoder_norm_layer, decoder_norm_layer, upsample_mode, decoder_feature_out=False):
-  # 64, 32, 16, 8, 4
-  encoder_block_list = [6, 12, 32, 32, 12]
-  decoder_block_list = [3, 3, 3, 3, 3, 1]
-  growth_rate = 32
-  encoder_channel_list = [64]
-  decoder_channel_list = [16, 32, 64, 64, 128, 256]
-  decoder_begin_size = input_shape // pow(2, len(encoder_block_list))
-  return UNetLike_DenseDimensionNet(encoder_input_channels, decoder_output_channels, decoder_begin_size, encoder_block_list, decoder_block_list, growth_rate, encoder_channel_list, decoder_channel_list, decoder_out_activation, encoder_norm_layer, decoder_norm_layer, upsample_mode, decoder_feature_out)
+# def UNetLike_DownStep5_3(input_shape, encoder_input_channels, decoder_output_channels, decoder_out_activation, encoder_norm_layer, decoder_norm_layer, upsample_mode, decoder_feature_out=False):
+#   # 64, 32, 16, 8, 4
+#   encoder_block_list = [6, 12, 32, 32, 12]
+#   decoder_block_list = [3, 3, 3, 3, 3, 1]
+#   growth_rate = 32
+#   encoder_channel_list = [64]
+#   decoder_channel_list = [16, 32, 64, 64, 128, 256]
+#   decoder_begin_size = input_shape // pow(2, len(encoder_block_list))
+#   return UNetLike_DenseDimensionNet(encoder_input_channels, decoder_output_channels, decoder_begin_size, encoder_block_list, decoder_block_list, growth_rate, encoder_channel_list, decoder_channel_list, decoder_out_activation, encoder_norm_layer, decoder_norm_layer, upsample_mode, decoder_feature_out)
+
+class Downsample(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(Downsample, self).__init__()
+        self.conv_relu = nn.Sequential(
+                            nn.Conv2d(in_channels, out_channels,
+                                      kernel_size=3, stride=2, padding=1),
+                            nn.InstanceNorm2d(out_channels),
+                            nn.LeakyReLU(inplace=True)
+            )
+    def forward(self, x):
+        x = self.conv_relu(x)
+        return x
+
+
+class DownsampleConcat(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(DownsampleConcat, self).__init__()
+        self.conv_relu = nn.Sequential(
+                            nn.Conv2d(in_channels, in_channels*2,
+                                      kernel_size=3, stride=1, padding=1),
+                            nn.InstanceNorm2d(in_channels*2),
+                            nn.LeakyReLU(inplace=True),
+                            nn.Conv2d(in_channels*2, out_channels,
+                                      kernel_size=3, stride=1, padding=1),
+                            nn.InstanceNorm2d(out_channels),
+                            nn.LeakyReLU(inplace=True)
+
+            )
+    def forward(self, x):
+        x = self.conv_relu(x)
+        return x
+
+class Changechannel(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(Changechannel, self).__init__()
+        self.conv_relu_bn = nn.Sequential(
+                            nn.Conv2d(in_channels, out_channels,
+                                      kernel_size=3, stride=1, padding=1),
+                            nn.InstanceNorm2d(out_channels),
+                            nn.LeakyReLU(inplace=True)
+            )
+    def forward(self, x):
+        x = self.conv_relu_bn(x)
+        return x
 
 class UNetLike_DenseDimensionNet(nn.Module):
-  def __init__(self, encoder_input_channels, decoder_output_channels, decoder_begin_size, encoder_block_list, decoder_block_list, growth_rate, encoder_channel_list, decoder_channel_list, decoder_out_activation, encoder_norm_layer=nn.BatchNorm2d, decoder_norm_layer=nn.BatchNorm3d, upsample_mode='nearest', decoder_feature_out=False):
+  def __init__(self, encoder_input_channels, decoder_output_channels, decoder_begin_size, encoder_block_list, decoder_block_list, growth_rate, encoder_channel_list, decoder_channel_list, decoder_out_activation, encoder_norm_layer=nn.BatchNorm2d, decoder_norm_layer=nn.BatchNorm3d, upsample_mode='nearest',decoder_feature_out=False,isMulView=False):
     super(UNetLike_DenseDimensionNet, self).__init__()
 
     self.decoder_channel_list = decoder_channel_list
@@ -43,10 +98,20 @@ class UNetLike_DenseDimensionNet(nn.Module):
     self.decoder_feature_out = decoder_feature_out
     activation = nn.ReLU(True)
     bn_size = 4
-
-    ###############
+    if(isMulView == False):
+        self.x_down1 = Changechannel(1, 16)
+        self.ConcatDown1 = DownsampleConcat(80, 64)
+        self.x_down2 = Downsample(16, 32)
+        self.ConcatDown2 = DownsampleConcat(160, 128)
+        self.x_down3 = Downsample(32, 64)
+        self.ConcatDown3 = DownsampleConcat(320, 256)
+        self.x_down4 = Downsample(64, 128)
+        self.ConcatDown4 = Changechannel(640,512)
+        self.x_down5 = Downsample(128, 256)
+        self.last = Changechannel(768,512)
+    #############
     # Encoder
-    ###############
+    #############
     if type(encoder_norm_layer) == functools.partial:
       use_bias = encoder_norm_layer.func == nn.InstanceNorm2d
     else:
@@ -90,9 +155,9 @@ class UNetLike_DenseDimensionNet(nn.Module):
       encoder_channel_list.append(num_input_channels)
       setattr(self, 'encoder_layer' + str(index), nn.Sequential(*down_layers))
 
-    ###############
+    #############
     # Linker
-    ###############
+    #############
     if type(decoder_norm_layer) == functools.partial:
       use_bias = decoder_norm_layer.func == nn.InstanceNorm3d
     else:
@@ -114,9 +179,9 @@ class UNetLike_DenseDimensionNet(nn.Module):
       ]
       setattr(self, 'linker_layer' + str(index), nn.Sequential(*link_layers))
 
-    ###############
+    #############
     # Decoder
-    ###############
+    #############
     for index, channel in enumerate(decoder_channel_list[:-1]):
       out_channels = channel
       in_channels = decoder_channel_list[index+1]
@@ -169,10 +234,31 @@ class UNetLike_DenseDimensionNet(nn.Module):
     ])
 
   def forward(self, input):
-    encoder_feature = self.encoder_layer(input)
+    x1_sober = input[1]
+    encoder_feature = self.encoder_layer(input[0])
     next_input = encoder_feature
     for i in range(self.n_downsampling):
       setattr(self, 'feature_linker' + str(i), getattr(self, 'linker_layer' + str(i))(next_input))
+      if(i==0):
+        x1_sober = self.x_down1(x1_sober)
+        z = torch.cat((x1_sober,next_input),1)
+        next_input = self.ConcatDown1(z)
+      elif(i==1):
+        x1_sober = self.x_down2(x1_sober)
+        z = torch.cat((x1_sober,next_input),1)
+        next_input = self.ConcatDown2(z)
+      elif(i==2):
+        x1_sober = self.x_down3(x1_sober)
+        z = torch.cat((x1_sober,next_input),1)
+        next_input = self.ConcatDown3(z)
+      elif(i==3):
+        x1_sober = self.x_down4(x1_sober)
+        z = torch.cat((x1_sober,next_input),1)
+        next_input = self.ConcatDown4(z)
+      elif(i==4):
+        x1_sober = self.x_down5(x1_sober)
+        z = torch.cat((x1_sober,next_input),1)
+        next_input = self.last(z)
       next_input = getattr(self, 'encoder_layer'+str(i))(next_input)
 
     next_input = self.base_link(next_input.view(next_input.size(0), -1))
@@ -204,6 +290,17 @@ class MultiView_UNetLike_DenseDimensionNet(nn.Module):
     self.backToSub = backToSub
     self.n_downsampling = view2Model.n_downsampling
     self.decoder_channel_list = view2Model.decoder_channel_list
+    self.x_down1 = Changechannel(1, 16)
+    self.ConcatDown1 = DownsampleConcat(80, 64)
+    self.x_down2 = Downsample(16, 32)
+    self.ConcatDown2 = DownsampleConcat(160, 128)
+    self.x_down3 = Downsample(32, 64)
+    self.ConcatDown3 = DownsampleConcat(320, 256)
+    self.x_down4 = Downsample(64, 128)
+    self.ConcatDown4 = Changechannel(640,512)
+    self.x_down5 = Downsample(128, 256)
+    self.last = Changechannel(768,512)
+
     if decoder_block_list is None:
       self.decoder_block_list = view2Model.decoder_block_list
     else:
@@ -214,9 +311,9 @@ class MultiView_UNetLike_DenseDimensionNet(nn.Module):
       use_bias = decoder_norm_layer.func == nn.InstanceNorm3d
     else:
       use_bias = decoder_norm_layer == nn.InstanceNorm3d
-    ###############
+    #############
     # Decoder
-    ###############
+    #############
     for index, channel in enumerate(self.decoder_channel_list[:-1]):
       out_channels = channel
       in_channels = self.decoder_channel_list[index + 1]
@@ -263,13 +360,32 @@ class MultiView_UNetLike_DenseDimensionNet(nn.Module):
 
 
   def forward(self, input):
-    # only support two views
-    assert len(input) == 2
-    # View 1 encoding process
+    x1_sober = input[2]
+    x2_sober = input[3]
     view1_encoder_feature = self.view1Model.encoder_layer(input[0])
     view1_next_input = view1_encoder_feature
     for i in range(self.view1Model.n_downsampling):
       setattr(self.view1Model, 'feature_linker' + str(i), getattr(self.view1Model, 'linker_layer' + str(i))(view1_next_input))
+      if(i==0):
+        x1_sober = self.x_down1(x1_sober)
+        z = torch.cat((x1_sober,view1_next_input),1)
+        view1_next_input = self.ConcatDown1(z)
+      elif(i==1):
+        x1_sober = self.x_down2(x1_sober)
+        z = torch.cat((x1_sober,view1_next_input),1)
+        view1_next_input = self.ConcatDown2(z)
+      elif(i==2):
+        x1_sober = self.x_down3(x1_sober)
+        z = torch.cat((x1_sober,view1_next_input),1)
+        view1_next_input = self.ConcatDown3(z)
+      elif(i==3):
+        x1_sober = self.x_down4(x1_sober)
+        z = torch.cat((x1_sober,view1_next_input),1)
+        view1_next_input = self.ConcatDown4(z)
+      elif(i==4):
+        x1_sober = self.x_down5(x1_sober)
+        z = torch.cat((x1_sober,view1_next_input),1)
+        view1_next_input = self.last(z)
       view1_next_input = getattr(self.view1Model, 'encoder_layer'+str(i))(view1_next_input)
     # View 2 encoding process
     view2_encoder_feature = self.view2Model.encoder_layer(input[1])
@@ -277,6 +393,26 @@ class MultiView_UNetLike_DenseDimensionNet(nn.Module):
     for i in range(self.view2Model.n_downsampling):
       setattr(self.view2Model, 'feature_linker' + str(i),
               getattr(self.view2Model, 'linker_layer' + str(i))(view2_next_input))
+      if(i==0):
+        x2_sober = self.x_down1(x2_sober)
+        z = torch.cat((x2_sober,view2_next_input),1)
+        view2_next_input = self.ConcatDown1(z)
+      elif(i==1):
+        x2_sober = self.x_down2(x2_sober)
+        z = torch.cat((x2_sober,view2_next_input),1)
+        view2_next_input = self.ConcatDown2(z)
+      elif(i==2):
+        x2_sober = self.x_down3(x2_sober)
+        z = torch.cat((x2_sober,view2_next_input),1)
+        view2_next_input = self.ConcatDown3(z)
+      elif(i==3):
+        x2_sober = self.x_down4(x2_sober)
+        z = torch.cat((x2_sober,view2_next_input),1)
+        view2_next_input = self.ConcatDown4(z)
+      elif(i==4):
+        x2_sober = self.x_down5(x2_sober)
+        z = torch.cat((x2_sober,view2_next_input),1)
+        view2_next_input = self.last(z)
       view2_next_input = getattr(self.view2Model, 'encoder_layer' + str(i))(view2_next_input)
     # View 1 decoding process Part1
     view1_next_input = self.view1Model.base_link(view1_next_input.view(view1_next_input.size(0), -1))
@@ -296,13 +432,14 @@ class MultiView_UNetLike_DenseDimensionNet(nn.Module):
         ########### MultiView Fusion
         # Method One: Fused feature back to sub-branch
         if self.backToSub:
-          view_avg = self.transposed_layer(view1_next_input, view2_next_input) / 2
+          # view_avg = self.transposed_layer4(view1_next_input, view2_next_input)  #STEP1:View1_next = torch.Size([4, 256, 4, 4, 4])
+          view_avg = self.transposed_layer(view1_next_input, view2_next_input)
           view1_next_input = view_avg.permute(*self.view1Order)
           view2_next_input = view_avg.permute(*self.view2Order)
           view_next_input = getattr(self, 'decoder_layer' + str(i))(view_avg)
         # Method Two: Fused feature only used in main-branch
         else:
-          view_avg = self.transposed_layer(view1_next_input, view2_next_input) / 2
+          view_avg = self.transposed_layer(view1_next_input, view2_next_input)
           view_next_input = getattr(self, 'decoder_layer' + str(i))(view_avg)
         ###########
         view1_next_input = getattr(self.view1Model, 'decoder_layer' + str(i))(view1_next_input)
@@ -313,13 +450,13 @@ class MultiView_UNetLike_DenseDimensionNet(nn.Module):
         ########### MultiView Fusion
         # Method One: Fused feature back to sub-branch
         if self.backToSub:
-          view_avg = self.transposed_layer(view1_next_input, view2_next_input) / 2
+          view_avg = self.transposed_layer(view1_next_input, view2_next_input)
           view1_next_input = view_avg.permute(*self.view1Order)
           view2_next_input = view_avg.permute(*self.view2Order)
           view_next_input = getattr(self, 'decoder_layer' + str(i))(torch.cat((view_avg, view_next_input), dim=1))
         # Method Two: Fused feature only used in main-branch
         else:
-          view_avg = self.transposed_layer(view1_next_input, view2_next_input) / 2
+          view_avg = self.transposed_layer(view1_next_input, view2_next_input)
           view_next_input = getattr(self, 'decoder_layer' + str(i))(torch.cat((view_avg, view_next_input), dim=1))
         ###########
         view1_next_input = getattr(self.view1Model, 'decoder_layer' + str(i))(view1_next_input)

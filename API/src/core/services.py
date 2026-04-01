@@ -152,6 +152,9 @@ def _clear_all_caches(dcm_dir):
 
 
 import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import functools
 from .metrics import (
     tensor_back_to_unnormalization,
     tensor_back_to_unMinMax,
@@ -162,8 +165,35 @@ from .metrics import (
     Cosine_Similarity,
 )
 import scipy.ndimage as ndimage
-import torch.nn as nn
-import functools
+from collections import OrderedDict
+
+
+class GradLayer(nn.Module):
+    """Sobel gradient layer for X-ray preprocessing."""
+    def __init__(self):
+        super(GradLayer, self).__init__()
+        kernel_v = [[-1, 0, 1],
+                    [-2, 0, 2],
+                    [-1, 0, 1]]
+        kernel_h = [[1, 2, 1],
+                    [0, 0, 0],
+                    [-1, -2, -1]]
+        kernel_h = torch.FloatTensor(kernel_h).unsqueeze(0).unsqueeze(0)
+        kernel_v = torch.FloatTensor(kernel_v).unsqueeze(0).unsqueeze(0)
+        self.weight_h = nn.Parameter(data=kernel_h, requires_grad=False)
+        self.weight_v = nn.Parameter(data=kernel_v, requires_grad=False)
+
+    def get_gray(self, x):
+        gray_coeffs = [65.738, 129.057, 25.064]
+        convert = x.new_tensor(gray_coeffs).view(1, 3, 1, 1) / 256
+        return x.mul(convert).sum(dim=1).unsqueeze(1)
+
+    def forward(self, x):
+        if x.shape[1] == 3:
+            x = self.get_gray(x)
+        x_v = F.conv2d(x, self.weight_v, padding=1)
+        x_h = F.conv2d(x, self.weight_h, padding=1)
+        return torch.sqrt(torch.pow(x_v, 2) + torch.pow(x_h, 2) + 1e-6)
 
 
 def preprocess_xray(
@@ -185,13 +215,13 @@ def preprocess_xray(
 
 def predict(ct_arr: np.ndarray, frontal_arr: np.ndarray, lateral_arr: np.ndarray, model_type: str = "real"):
     """
-    Business logic for prediction.
+    Business logic for prediction using 3DGAN MultiView model.
 
     Args:
         ct_arr: Ground truth CT array
         frontal_arr: Frontal X-ray array
         lateral_arr: Lateral X-ray array
-        model_type: 'real' or 'synthetic' - which model weights to use
+        model_type: 'real', 'synthetic', or 'mixed' - which model weights to use
     """
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -207,18 +237,16 @@ def predict(ct_arr: np.ndarray, frontal_arr: np.ndarray, lateral_arr: np.ndarray
     xray2_tensor = preprocess_xray(lateral_arr).unsqueeze(0).to(device)
 
     # 2. Preprocess CT data for metrics
-    # The models in test.py expect CT normalized to 0-1 for early metrics, and 0-2500 for later ones.
-    # Our generated fake CT comes out in range [-mean/std, ...] which corresponds to mean=0, std=1 in yml
-    # So actually fake CT range is around 0.0-1.0
     ct_arr_clipped = np.clip(ct_arr, 0, 2500)
-    real_CT_unnorm = (
-        ct_arr_clipped / 2500.0
-    )  # This matches the 0-1 range array used for ssim/cos is test.py
-    # Add batch to unnorm shape => [1, D, H, W]
+    real_CT_unnorm = ct_arr_clipped / 2500.0
     real_CT_unnorm_b = np.expand_dims(real_CT_unnorm, 0)
 
-    # 3. Model Architecture & Weights
-    # Get Multiview generator initialized with specs from d2_multiview2500.yml
+    # 3. GradLayer for Sobel gradients (xray_sober)
+    grad_layer = GradLayer().to(device)
+    xray1_sober = grad_layer(xray1_tensor)  # [1, 1, 128, 128]
+    xray2_sober = grad_layer(xray2_tensor)
+
+    # 4. Model Architecture & Weights
     encoder_norm_layer = functools.partial(
         nn.InstanceNorm2d, affine=False, track_running_stats=True
     )
@@ -226,15 +254,17 @@ def predict(ct_arr: np.ndarray, frontal_arr: np.ndarray, lateral_arr: np.ndarray
         nn.InstanceNorm3d, affine=False, track_running_stats=True
     )
 
-    # From yml: CTOrder_Xray1: [0, 1, 3, 2, 4], CTOrder_Xray2: [0, 1, 4, 2, 3]
+    # CTOrder_Xray1: [0, 1, 3, 2, 4], CTOrder_Xray2: [0, 1, 4, 2, 3]
     view1Order = [0, 1, 3, 2, 4]
     view2Order = [0, 1, 4, 2, 3]
 
-    from .model.generator import (
+    from .model.gan_generator import (
         UNetLike_DownStep5,
         MultiView_UNetLike_DenseDimensionNet,
     )
 
+    # IMPORTANT: isMulView=True so UNetLike doesn't create its own downsampling layers
+    # (MultiView model provides them)
     view1Model = UNetLike_DownStep5(
         input_shape=128,
         encoder_input_channels=1,
@@ -244,6 +274,7 @@ def predict(ct_arr: np.ndarray, frontal_arr: np.ndarray, lateral_arr: np.ndarray
         decoder_norm_layer=decoder_norm_layer,
         upsample_mode="transposed",
         decoder_feature_out=True,
+        isMulView=True,
     )
 
     view2Model = UNetLike_DownStep5(
@@ -255,6 +286,7 @@ def predict(ct_arr: np.ndarray, frontal_arr: np.ndarray, lateral_arr: np.ndarray
         decoder_norm_layer=decoder_norm_layer,
         upsample_mode="transposed",
         decoder_feature_out=True,
+        isMulView=True,
     )
 
     netG = MultiView_UNetLike_DenseDimensionNet(
@@ -270,7 +302,8 @@ def predict(ct_arr: np.ndarray, frontal_arr: np.ndarray, lateral_arr: np.ndarray
         upsample_mode="transposed",
     ).to(device)
 
-    # test.py sets to eval() and manually sets instance norms to train()
+    # Set to eval mode and manually set instance norms to train()
+    # (as done in original test.py)
     netG.eval()
     for name, m in netG.named_modules():
         if m.__class__.__name__.startswith("InstanceNorm"):
@@ -278,10 +311,6 @@ def predict(ct_arr: np.ndarray, frontal_arr: np.ndarray, lateral_arr: np.ndarray
 
     if os.path.exists(weight_path):
         checkpoint = torch.load(weight_path, map_location=device)
-        # Handle "module." prefix if saved by DataParallel
-        from collections import OrderedDict
-
-        # The actual model state dict is nested inside checkpoint['state_dict']
         state_dict = checkpoint.get('state_dict', checkpoint)
 
         new_state_dict = OrderedDict()
@@ -289,21 +318,20 @@ def predict(ct_arr: np.ndarray, frontal_arr: np.ndarray, lateral_arr: np.ndarray
             name = k[7:] if k.startswith("module.") else k
             new_state_dict[name] = v
         netG.load_state_dict(new_state_dict)
+    else:
+        print(f"[WARNING] Weight file not found at {weight_path}")
 
-    # 4. Inference
+    # 5. Inference with 4 inputs: [xray1, xray2, xray1_sober, xray2_sober]
     with torch.no_grad():
-        _, _, fake_D = netG([xray1_tensor, xray2_tensor])
+        _, _, fake_D = netG([xray1_tensor, xray2_tensor, xray1_sober, xray2_sober])
 
     fake_CT = torch.squeeze(fake_D, 1).cpu().numpy()  # [B D H W] - shape (1, 128, 128, 128)
 
-    # In std mode from dataset class, arrays are NOT transposed (matching 3DGAN test.py line 218-220)
-    # But ground truth CT is 256^3 from API processing while model outputs 128^3
-    # So we need to resize ground truth to match model's output size
     generate_CT_unnorm = tensor_back_to_unnormalization(fake_CT, 0.0, 1.0)
     generate_CT_unnorm = np.clip(generate_CT_unnorm, 0, 1)
 
     # Resize ground truth CT from (1, 256, 256, 256) to (1, 128, 128, 128) to match model output
-    resize_factor = (1, 0.5, 0.5, 0.5)  # Only scale spatial dims, not batch
+    resize_factor = (1, 0.5, 0.5, 0.5)
     real_CT_resized = ndimage.zoom(real_CT_unnorm_b, resize_factor, order=1)
 
     # 6. Metrics Calculation
@@ -340,9 +368,12 @@ def predict(ct_arr: np.ndarray, frontal_arr: np.ndarray, lateral_arr: np.ndarray
     del netG
     del xray1_tensor
     del xray2_tensor
+    del xray1_sober
+    del xray2_sober
     del fake_D
     del fake_CT
     del generate_CT_unnorm
+    del grad_layer
     if device.type == "cuda":
         torch.cuda.empty_cache()
 

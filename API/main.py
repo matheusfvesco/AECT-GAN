@@ -4,6 +4,7 @@ import numpy as np
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Form
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 from uuid import uuid4
 import shutil
@@ -11,6 +12,15 @@ import zipfile
 from src.core.services import process, predict
 
 app = FastAPI(title="X2CT API", version="1.0")
+
+# CORS middleware for frontend access
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins (frontend runs on different port)
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 def get_base_dir() -> Path:
@@ -111,11 +121,12 @@ async def upload_zip(
     file: UploadFile = File(...),
     model_type: str = Form("real"),
 ):
+    print("request received with model_type:", model_type)
     # Validate model_type
-    if model_type not in ("real", "synthetic", "mixed", "x2ct"):
+    if model_type not in ("real", "synthetic", "mixed"):
         raise HTTPException(
             status_code=400,
-            detail="model_type must be 'real', 'synthetic', 'mixed', or 'x2ct'"
+            detail="model_type must be 'real', 'synthetic', or 'mixed'"
         )
 
     # 1. Validate file

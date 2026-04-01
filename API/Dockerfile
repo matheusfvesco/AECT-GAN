@@ -42,13 +42,13 @@ RUN conda tos accept --override-channels --channel https://repo.anaconda.com/pkg
     conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
 
 # Create conda environment
-RUN conda env create -f /app/environment.yml -p /opt/conda/envs/x2ct_env_api && \
+RUN conda env create -f /app/environment.yml -p /opt/conda/envs/aect_env_api && \
     conda clean -afy
 
 # Activate the environment
-ENV PATH="/opt/conda/envs/x2ct_env_api/bin:$PATH"
-ENV CONDA_DEFAULT_ENV=x2ct_env_api
-ENV CONDA_PREFIX=/opt/conda/envs/x2ct_env_api
+ENV PATH="/opt/conda/envs/aect_env_api/bin:$PATH"
+ENV CONDA_DEFAULT_ENV=aect_env_api
+ENV CONDA_PREFIX=/opt/conda/envs/aect_env_api
 ENV PYTHONPATH=/app
 
 # nnUNet and threading environment variables to limit multiprocessing

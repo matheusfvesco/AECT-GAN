@@ -1,4 +1,4 @@
-name: x2ct_env_api
+name: aect_env_api
 channels:
   - conda-forge
 dependencies:
