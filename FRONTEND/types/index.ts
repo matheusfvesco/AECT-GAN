@@ -4,7 +4,7 @@ export interface X2CTMetrics {
   Cosine_Similarity: number;
   SSIM: number;
   PSNR_3D: number;
-  model_type: 'real' | 'synthetic' | 'mixed' | 'x2ct';
+  model_type: 'real' | 'synthetic' | 'mixed';
 }
 
 export interface X2CTXrays {
@@ -25,6 +25,17 @@ export interface X2CTResponse {
   ct: {
     generated: string[];
     original: string[];
+  };
+  dimensions: X2CTDimensions;
+}
+
+// New type for /predict endpoint response (no metrics, no original CT)
+export interface X2CTPredictResponse {
+  status: 'ok';
+  model_type: 'real' | 'synthetic' | 'mixed';
+  xrays: X2CTXrays;
+  ct: {
+    generated: string[];
   };
   dimensions: X2CTDimensions;
 }

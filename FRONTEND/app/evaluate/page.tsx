@@ -1,0 +1,93 @@
+'use client';
+
+import { useState, useCallback } from 'react';
+import { FileUploader, XRayViewer, MetricsPanel, CTSyncViewer } from '@/components';
+import { X2CTResponse } from '@/types';
+import { uploadZip } from '@/lib/api';
+import Link from 'next/link';
+
+export default function EvaluatePage() {
+  const [result, setResult] = useState<X2CTResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleUpload = useCallback(async (file: File, modelType: 'real' | 'synthetic' | 'mixed') => {
+    setIsLoading(true);
+    setError(null);
+    setResult(null);
+    try {
+      const response = await uploadZip(file, modelType);
+      if (response.success && response.data) {
+        setResult(response.data);
+      } else {
+        setError(response.error || 'Upload failed');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error occurred');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const handleReset = useCallback(() => {
+    setResult(null);
+    setError(null);
+  }, []);
+
+  return (
+    <main className="min-h-screen bg-slate-900 text-white">
+      <header className="border-b border-slate-700 bg-slate-800/50">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-white">AECT-GAN Evaluate</h1>
+              <p className="text-slate-400 text-sm">Evaluate model performance with ground truth comparison</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <Link href="/" className="px-4 py-2 text-sm bg-slate-700 hover:bg-slate-600 rounded transition-colors">Home</Link>
+              {result && <button onClick={handleReset} className="px-4 py-2 text-sm bg-slate-700 hover:bg-slate-600 rounded transition-colors">New Upload</button>}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        {!result ? (
+          <div className="flex flex-col items-center justify-center min-h-[60vh]">
+            <div className="text-center mb-8 max-w-2xl">
+              <h2 className="text-3xl font-semibold mb-4">Evaluate CT Reconstruction</h2>
+              <p className="text-slate-400">
+                Upload a ZIP containing a CT scan and frontal + lateral X-rays.
+              </p>
+            </div>
+            <FileUploader onUpload={handleUpload} isLoading={isLoading} error={error} />
+          </div>
+        ) : (
+          <div className="space-y-10">
+            <section>
+              <h2 className="text-xl font-semibold mb-4 text-slate-200">Input X-Rays</h2>
+              <XRayViewer xrays={result.xrays} />
+            </section>
+            <section>
+              <h2 className="text-xl font-semibold mb-4 text-slate-200">Evaluation Metrics</h2>
+              <MetricsPanel metrics={result.metrics} />
+            </section>
+            <section>
+              <h2 className="text-xl font-semibold mb-4 text-slate-200">CT Comparison</h2>
+              <p className="text-slate-400 text-sm mb-4">
+                Dimensions: {result.dimensions.depth} x {result.dimensions.height} x {result.dimensions.width} voxels
+              </p>
+              <CTSyncViewer generatedSlices={result.ct.generated} originalSlices={result.ct.original} />
+            </section>
+          </div>
+        )}
+      </div>
+
+      <footer className="border-t border-slate-700 mt-auto">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <p className="text-slate-500 text-sm text-center">AECT-GAN Playground — Ephemeral processing. No data is stored.</p>
+        </div>
+      </footer>
+    </main>
+  );
+}

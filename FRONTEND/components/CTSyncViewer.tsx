@@ -5,7 +5,7 @@ import { getDataUrl } from '@/lib/api';
 
 interface CTSyncViewerProps {
   generatedSlices: string[];
-  originalSlices: string[];
+  originalSlices?: string[];
 }
 
 export function CTSyncViewer({
@@ -16,6 +16,7 @@ export function CTSyncViewer({
   const [currentSlice, setCurrentSlice] = useState(totalSlices / 2);
   const [imageSize, setImageSize] = useState<128 | 256 | 512>(128);
   const containerRef = useRef<HTMLDivElement>(null);
+  const hasOriginal = originalSlices && originalSlices.length > 0;
 
   const sizeOptions: (128 | 256 | 512)[] = [128, 256, 512];
 
@@ -26,8 +27,8 @@ export function CTSyncViewer({
   );
 
   const originalUrl = useMemo(
-    () => getDataUrl(originalSlices[currentSlice]),
-    [originalSlices, currentSlice]
+    () => hasOriginal ? getDataUrl(originalSlices![currentSlice]) : getDataUrl(generatedSlices[currentSlice]),
+    [hasOriginal, originalSlices, generatedSlices, currentSlice]
   );
 
   // Wheel-based navigation
@@ -125,20 +126,22 @@ export function CTSyncViewer({
           />
         </div>
 
-        {/* Original CT */}
-        <div className="flex flex-col items-center">
-          <span className="text-green-400 mb-2 font-semibold text-sm">
-            Original CT
-          </span>
-          <img
-            src={originalUrl}
-            alt={`Original slice ${currentSlice}`}
-            width={imageSize}
-            height={imageSize}
-            className="border border-green-500/50 rounded"
-            style={{ imageRendering: imageSize > 128 ? 'auto' : 'pixelated' }}
-          />
-        </div>
+        {/* Original CT - only show if originalSlices provided */}
+        {hasOriginal && (
+          <div className="flex flex-col items-center">
+            <span className="text-green-400 mb-2 font-semibold text-sm">
+              Original CT
+            </span>
+            <img
+              src={originalUrl}
+              alt={`Original slice ${currentSlice}`}
+              width={imageSize}
+              height={imageSize}
+              className="border border-green-500/50 rounded"
+              style={{ imageRendering: imageSize > 128 ? 'auto' : 'pixelated' }}
+            />
+          </div>
+        )}
       </div>
 
       {/* Slice slider */}

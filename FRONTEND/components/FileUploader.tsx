@@ -3,14 +3,14 @@
 import { useRef, useState } from 'react';
 
 interface FileUploaderProps {
-  onUpload: (file: File, modelType: 'real' | 'synthetic' | 'mixed' | 'x2ct') => void;
+  onUpload: (file: File, modelType: 'real' | 'synthetic' | 'mixed') => void;
   isLoading: boolean;
   error: string | null;
 }
 
 export function FileUploader({ onUpload, isLoading, error }: FileUploaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [modelType, setModelType] = useState<'real' | 'synthetic' | 'mixed' | 'x2ct'>('real');
+  const [modelType, setModelType] = useState<'real' | 'synthetic' | 'mixed'>('real');
   const [fileName, setFileName] = useState<string | null>(null);
 
   const handleFileChange = (e: { target: HTMLInputElement }) => {
@@ -81,14 +81,13 @@ export function FileUploader({ onUpload, isLoading, error }: FileUploaderProps) 
               <select
                 id="model-type"
                 value={modelType}
-                onChange={(e) => setModelType(e.target.value as 'real' | 'synthetic' | 'mixed' | 'x2ct')}
+                onChange={(e) => setModelType(e.target.value as 'real' | 'synthetic' | 'mixed')}
                 disabled={isLoading}
                 className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-blue-500 disabled:opacity-50"
               >
                 <option value="real">Real — trained with real X-rays (182 samples)</option>
                 <option value="synthetic">Synthetic — trained with DRRs (2006 samples)</option>
-                <option value="mixed">Mixed — real X-rays when available, synthetic otherwise (2006 samples)</option>
-                <option value="x2ct">X2CT — trained on LIDC-IDRI only (916 samples)</option>
+                <option value="mixed">Mixed — 182 real + 1824 DRR pairs (2006 total)</option>
               </select>
             </div>
           </div>
@@ -97,9 +96,7 @@ export function FileUploader({ onUpload, isLoading, error }: FileUploaderProps) 
               ? 'Real model: trained on frontal/lateral X-rays acquired from real patients. May generalize better to clinical data.'
               : modelType === 'synthetic'
               ? 'Synthetic model: trained on Digitally Reconstructed Radiographs (DRRs) derived from CT scans. DRRs are generated mathematically and may have different characteristics than real X-rays.'
-              : modelType === 'mixed'
-              ? 'Mixed model: trained with real X-ray pairs when available, and synthetic DRRs for remaining samples. Combines benefits of both real and synthetic training.'
-              : 'X2CT model: trained exclusively on the LIDC-IDRI dataset. Uses only frontal and lateral X-rays derived from real CT scans.'}
+              : 'Mixed model: trained with 182 real X-ray pairs and 1824 DRR pairs (2006 total). Combines benefits of both real and synthetic training.'}
           </p>
         </div>
 

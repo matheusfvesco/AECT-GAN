@@ -1,153 +1,75 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { FileUploader, XRayViewer, MetricsPanel, CTSyncViewer } from '@/components';
-import { X2CTResponse } from '@/types';
-import { uploadZip } from '@/lib/api';
+import Link from 'next/link';
 
 export default function Home() {
-  const [result, setResult] = useState<X2CTResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleUpload = useCallback(async (file: File, modelType: 'real' | 'synthetic' | 'mixed' | 'x2ct') => {
-    setIsLoading(true);
-    setError(null);
-    setResult(null);
-
-    try {
-      const response = await uploadZip(file, modelType);
-
-      if (response.success && response.data) {
-        setResult(response.data);
-      } else {
-        setError(response.error || 'Upload failed');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error occurred');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  const handleReset = useCallback(() => {
-    setResult(null);
-    setError(null);
-  }, []);
-
   return (
     <main className="min-h-screen bg-slate-900 text-white">
-      {/* Header */}
       <header className="border-b border-slate-700 bg-slate-800/50">
         <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-white">X2CT Playground</h1>
-              <p className="text-slate-400 text-sm">
-                X-Ray to CT reconstruction from dual-view X-rays
-              </p>
-            </div>
-            {/* Training Info - only show on upload page, hide on dashboard */}
-            {!result && (
-              <div className="flex items-center gap-6 text-xs text-slate-400">
-                <div>
-                  <span className="text-green-400 font-medium">Real Model</span>
-                  <br />
-                  182 training samples
-                </div>
-                <div>
-                  <span className="text-purple-400 font-medium">Synthetic Model</span>
-                  <br />
-                  2006 training samples
-                </div>
-                <div>
-                  <span className="text-cyan-400 font-medium">Mixed Model</span>
-                  <br />
-                  2006 training samples
-                </div>
-                <div>
-                  <span className="text-amber-400 font-medium">X2CT Model</span>
-                  <br />
-                  916 training samples
-                </div>
-              </div>
-            )}
-            {result && (
-              <button
-                onClick={handleReset}
-                className="px-4 py-2 text-sm bg-slate-700 hover:bg-slate-600 rounded transition-colors"
-              >
-                New Upload
-              </button>
-            )}
-          </div>
+          <h1 className="text-2xl font-bold text-white">AECT-GAN Playground</h1>
+          <p className="text-slate-400 text-sm">X-Ray to CT reconstruction from dual-view X-rays</p>
         </div>
       </header>
 
-      {/* Main content */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        {!result ? (
-          /* Upload state */
-          <div className="flex flex-col items-center justify-center min-h-[60vh]">
-            <div className="text-center mb-8 max-w-2xl">
-              <h2 className="text-3xl font-semibold mb-4">
-                Reconstruct CT from X-Rays
-              </h2>
-              <p className="text-slate-400">
-                Upload a ZIP containing a CT scan and frontal + lateral X-rays.
-                The model will generate a synthetic CT from the X-rays. Compare
-                the generated CT with the original (resized to match) using the
-                synchronized 3D slice viewer.
-              </p>
+      <div className="max-w-7xl mx-auto px-6 py-16">
+        <div className="text-center mb-16">
+          <h2 className="text-4xl font-bold mb-4">Reconstruct CT from X-Rays</h2>
+          <p className="text-slate-400 text-lg max-w-2xl mx-auto">
+            Our deep learning model generates 3D CT volumes from dual-view X-ray images.
+            Use Evaluate to compare against ground truth, or Predict for inference only.
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+          {/* Evaluate Card */}
+          <div className="bg-slate-800 border border-slate-700 rounded-xl p-8 hover:border-blue-500 transition-colors">
+            <div className="text-blue-400 mb-4">
+              <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
             </div>
-            <FileUploader
-              onUpload={handleUpload}
-              isLoading={isLoading}
-              error={error}
-            />
+            <h3 className="text-2xl font-semibold mb-3">Evaluate</h3>
+            <p className="text-slate-400 mb-6">
+              Upload DICOM files (CT scan + X-rays) to evaluate model performance with full metrics.
+            </p>
+            <ul className="text-slate-300 text-sm space-y-2 mb-8">
+              <li>- Requires CT scan + X-rays</li>
+              <li>- Returns evaluation metrics</li>
+              <li>- Compares generated vs original CT</li>
+            </ul>
+            <Link href="/evaluate" className="block w-full text-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors">
+              Go to Evaluate
+            </Link>
           </div>
-        ) : (
-          /* Results state */
-          <div className="space-y-10">
-            {/* X-Ray Input Section */}
-            <section>
-              <h2 className="text-xl font-semibold mb-4 text-slate-200">
-                Input X-Rays
-              </h2>
-              <XRayViewer xrays={result.xrays} />
-            </section>
 
-            {/* Metrics Section */}
-            <section>
-              <h2 className="text-xl font-semibold mb-4 text-slate-200">
-                Evaluation Metrics
-              </h2>
-              <MetricsPanel metrics={result.metrics} />
-            </section>
-
-            {/* CT Comparison Section */}
-            <section>
-              <h2 className="text-xl font-semibold mb-4 text-slate-200">
-                CT Comparison
-              </h2>
-              <p className="text-slate-400 text-sm mb-4">
-                Dimensions: {result.dimensions.depth} x{' '}
-                {result.dimensions.height} x {result.dimensions.width} voxels
-              </p>
-              <CTSyncViewer
-                generatedSlices={result.ct.generated}
-                originalSlices={result.ct.original}
-              />
-            </section>
+          {/* Predict Card */}
+          <div className="bg-slate-800 border border-slate-700 rounded-xl p-8 hover:border-purple-500 transition-colors">
+            <div className="text-purple-400 mb-4">
+              <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <h3 className="text-2xl font-semibold mb-3">Predict</h3>
+            <p className="text-slate-400 mb-6">
+              Upload X-ray images (DICOM or JPEG/PNG) to generate a CT volume without metrics.
+            </p>
+            <ul className="text-slate-300 text-sm space-y-2 mb-8">
+              <li>- Accepts 2 X-ray files</li>
+              <li>- No metrics calculation</li>
+              <li>- Faster inference</li>
+            </ul>
+            <Link href="/predict" className="block w-full text-center px-6 py-3 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition-colors">
+              Go to Predict
+            </Link>
           </div>
-        )}
+        </div>
       </div>
 
-      {/* Footer */}
       <footer className="border-t border-slate-700 mt-auto">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <p className="text-slate-500 text-sm text-center">
-            X2CT Playground — Ephemeral processing. No data is stored.
+            AECT-GAN Playground — Ephemeral processing. No data is stored.
           </p>
         </div>
       </footer>

@@ -14,18 +14,13 @@ const modelInfo = {
   },
   synthetic: {
     label: 'Synthetic CT Model',
-    tooltip: 'Trained with 2006 DRR X-ray samples',
+    tooltip: 'Trained with 2006 CT samples (DRR X-ray pairs)',
     color: 'purple',
   },
   mixed: {
     label: 'Mixed CT Model',
-    tooltip: 'Trained with 2006 samples (real X-rays when available, synthetic otherwise)',
+    tooltip: 'Trained with 2006 CT samples: 182 real X-ray pairs + 1824 DRR pairs',
     color: 'cyan',
-  },
-  x2ct: {
-    label: 'X2CT Model',
-    tooltip: 'Trained with 916 samples on LIDC-IDRI dataset',
-    color: 'amber',
   },
 };
 
@@ -45,9 +40,7 @@ export function MetricsPanel({ metrics }: MetricsPanelProps) {
                 ? 'bg-green-900/50 text-green-400 border border-green-700'
                 : info.color === 'purple'
                 ? 'bg-purple-900/50 text-purple-400 border border-purple-700'
-                : info.color === 'cyan'
-                ? 'bg-cyan-900/50 text-cyan-400 border border-cyan-700'
-                : 'bg-amber-900/50 text-amber-400 border border-amber-700'
+                : 'bg-cyan-900/50 text-cyan-400 border border-cyan-700'
             }`}
           >
             {info.label}

@@ -1,5 +1,5 @@
 # ============================================================
-# X2CT Frontend Dockerfile
+# AECT-GAN Frontend Dockerfile
 # Next.js application with Node.js 20
 # ============================================================
 

@@ -1,5 +1,5 @@
 # ============================================================
-# X2CT API Dockerfile
+# AECT-GAN API Dockerfile
 # Base: CUDA 12.8 + Python 3.9 with conda
 # GPU-enabled via nvidia-container-toolkit
 # ============================================================

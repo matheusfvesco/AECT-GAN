@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'X2CT Playground',
+  title: 'AECT-GAN Playground',
   description: 'X-Ray to CT reconstruction playground',
 };
 

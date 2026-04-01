@@ -1,6 +1,7 @@
 import base64
 import cv2
 import numpy as np
+import scipy.ndimage as ndimage
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Form
 from fastapi.responses import JSONResponse
@@ -9,9 +10,23 @@ from pathlib import Path
 from uuid import uuid4
 import shutil
 import zipfile
-from src.core.services import process, predict
+from src.core.services import (
+    # Existing
+    process,
+    # Validation
+    detect_content_type,
+    validate_content_type_for_predict,
+    validate_dicom_xray_structure,
+    # Loaders
+    load_xrays_from_dicom,
+    load_xrays_for_predict,
+    # Generation
+    generate_ct,
+    # Evaluation
+    evaluate_ct,
+)
 
-app = FastAPI(title="X2CT API", version="1.0")
+app = FastAPI(title="AECT-GAN API", version="1.0")
 
 # CORS middleware for frontend access
 app.add_middleware(
@@ -110,74 +125,158 @@ def _xray_to_base64(xray: np.ndarray) -> str:
 def root():
     return {
         "status": "ok",
-        "message": "X2CT API is running",
+        "message": "AECT-GAN API is running",
         "version": "1.0",
-        "endpoints": ["/", "/predict"],
+        "endpoints": ["/", "/evaluate", "/predict"],
     }
 
 
-@app.post("/predict")
-async def upload_zip(
+@app.post("/evaluate")
+async def upload_zip_evaluate(
     file: UploadFile = File(...),
     model_type: str = Form("real"),
 ):
-    print("request received with model_type:", model_type)
-    # Validate model_type
+    """
+    Evaluate endpoint - requires DICOM files (CT scan + X-rays).
+    Validates structure, generates CT, and calculates metrics.
+    """
+    print("evaluate request received with model_type:", model_type)
+
+    # 1. Validate model_type
     if model_type not in ("real", "synthetic", "mixed"):
         raise HTTPException(
             status_code=400,
             detail="model_type must be 'real', 'synthetic', or 'mixed'"
         )
 
-    # 1. Validate file
+    # 2. Validate file is zip
     validate_upload(file)
 
-    # 2. Setup paths
+    # 3. Setup paths
     uid = str(uuid4())
     target_dir = get_base_dir() / "uploads" / uid
     target_dir.mkdir(parents=True, exist_ok=True)
 
     try:
-        # 3. Save
+        # 4. Save and unzip
         zip_path = await save_upload(file, target_dir)
-
-        # 4. Unzip
         unzip_file(zip_path, target_dir)
 
-        # 5. Process
+        # 5. Validate DICOM structure
+        validate_dicom_xray_structure(target_dir)
+
+        # 6. Process CT and X-rays
         ct_arr, frontal_arr, lateral_arr = process(target_dir)
 
-        # 6. Predict - now returns (results, ct_generated, ct_original)
-        results, ct_generated, ct_original = predict(
-            ct_arr, frontal_arr, lateral_arr, model_type=model_type
-        )
+        # 7. Generate CT
+        ct_generated = generate_ct(frontal_arr, lateral_arr, model_type)
 
-        # 7. Serialize everything to base64
+        # 8. Evaluate (metrics)
+        results = evaluate_ct(ct_generated, ct_arr)
+        results["model_type"] = model_type
+
+        # 9. Serialize - resize ground truth to match generated CT resolution for fair comparison
+        ct_arr_batched = np.expand_dims(ct_arr, 0)  # → (1, D, H, W)
+        resize_factor = (1, 0.5, 0.5, 0.5)  # 256→128
+        ct_arr_resized = ndimage.zoom(ct_arr_batched, resize_factor, order=1)  # → (1, 128, 128, 128)
+        ct_arr_for_serialize = np.squeeze(ct_arr_resized, 0)  # → (128, 128, 128)
+
         generated_slices = _ct_to_base64_slices(ct_generated.squeeze(0))
-        original_slices = _ct_to_base64_slices(ct_original.squeeze(0))
+        original_slices = _ct_to_base64_slices(ct_arr_for_serialize)
 
-        # 8. Cleanup immediately after processing
+        # 10. Cleanup
         cleanup(target_dir)
 
-        return JSONResponse(
-            {
-                "status": "ok",
-                "metrics": results,
-                "xrays": {
-                    "frontal": _xray_to_base64(frontal_arr),
-                    "lateral": _xray_to_base64(lateral_arr),
-                },
-                "ct": {
-                    "generated": generated_slices,
-                    "original": original_slices,
-                },
-                "dimensions": {
-                    "depth": int(ct_generated.shape[1]),
-                    "height": int(ct_generated.shape[2]),
-                    "width": int(ct_generated.shape[3]),
-                },
-            }
+        return JSONResponse({
+            "status": "ok",
+            "metrics": results,
+            "xrays": {
+                "frontal": _xray_to_base64(frontal_arr),
+                "lateral": _xray_to_base64(lateral_arr),
+            },
+            "ct": {
+                "generated": generated_slices,
+                "original": original_slices,
+            },
+            "dimensions": {
+                "depth": int(ct_generated.shape[1]),
+                "height": int(ct_generated.shape[2]),
+                "width": int(ct_generated.shape[3]),
+            },
+        })
+
+    except HTTPException:
+        cleanup(target_dir)
+        raise
+    except Exception as exc:
+        import traceback
+        traceback.print_exc()
+        cleanup(target_dir)
+        raise HTTPException(status_code=500, detail=f"Internal error: {exc}")
+
+
+@app.post("/predict")
+async def upload_zip_predict(
+    file: UploadFile = File(...),
+    model_type: str = Form("real"),
+):
+    """
+    Predict endpoint - accepts ZIP with 2 DICOM X-ray files OR 2 JPEG/PNG images.
+    Generates CT without calculating metrics.
+    """
+    print("predict request received with model_type:", model_type)
+
+    # 1. Validate model_type
+    if model_type not in ("real", "synthetic", "mixed"):
+        raise HTTPException(
+            status_code=400,
+            detail="model_type must be 'real', 'synthetic', or 'mixed'"
         )
+
+    # 2. Validate file is zip
+    validate_upload(file)
+
+    # 3. Setup paths
+    uid = str(uuid4())
+    target_dir = get_base_dir() / "uploads" / uid
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        # 4. Save and unzip
+        zip_path = await save_upload(file, target_dir)
+        unzip_file(zip_path, target_dir)
+
+        # 5. Validate content type (dicom vs images vs mixed)
+        validate_content_type_for_predict(target_dir)
+
+        # 6. Load X-rays (from DICOM or images)
+        frontal_arr, lateral_arr = load_xrays_for_predict(target_dir)
+
+        # 7. Generate CT
+        ct_generated = generate_ct(frontal_arr, lateral_arr, model_type)
+
+        # 8. Serialize
+        generated_slices = _ct_to_base64_slices(ct_generated.squeeze(0))
+
+        # 9. Cleanup
+        cleanup(target_dir)
+
+        return JSONResponse({
+            "status": "ok",
+            "model_type": model_type,
+            "xrays": {
+                "frontal": _xray_to_base64(frontal_arr),
+                "lateral": _xray_to_base64(lateral_arr),
+            },
+            "ct": {
+                "generated": generated_slices,
+            },
+            "dimensions": {
+                "depth": int(ct_generated.shape[1]),
+                "height": int(ct_generated.shape[2]),
+                "width": int(ct_generated.shape[3]),
+            },
+        })
 
     except HTTPException:
         cleanup(target_dir)
