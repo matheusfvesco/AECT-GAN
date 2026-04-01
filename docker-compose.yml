@@ -1,5 +1,5 @@
 # ============================================================
-# X2CT Docker Compose
+# AECT Docker Compose
 # Spins up both the FastAPI backend and Next.js frontend
 # API has GPU access via nvidia-container-toolkit
 # ============================================================
@@ -9,7 +9,7 @@ services:
     build:
       context: ./API
       dockerfile: Dockerfile
-    container_name: x2ct-api
+    container_name: aect-api
     ports:
       - "8001:8001"
     volumes:
@@ -47,7 +47,7 @@ services:
       context: ./FRONTEND
       dockerfile: Dockerfile
       target: development
-    container_name: x2ct-frontend
+    container_name: aect-frontend
     ports:
       - "3005:3000"
     volumes:
@@ -66,5 +66,5 @@ services:
 # Network configuration
 networks:
   default:
-    name: x2ct-network
+    name: aect-network
     driver: bridge
