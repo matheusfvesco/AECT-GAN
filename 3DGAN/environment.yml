@@ -1,85 +1,131 @@
-name: AECT-GAN
+name: AECT-GAN-39
 channels:
   - conda-forge
 dependencies:
-  - _libgcc_mutex=0.1=conda_forge
-  - _openmp_mutex=4.5=2_gnu
-  - ca-certificates=2025.11.12=hbd8a1cb_0
-  - icu=78.1=h33c6efd_0
-  - ld_impl_linux-64=2.45=default_hbd61a6d_104
-  - libffi=3.4.6=h2dba641_1
-  - libgcc=15.2.0=he0feb66_16
-  - libgcc-ng=15.2.0=h69a702a_16
-  - libgomp=15.2.0=he0feb66_16
-  - liblzma=5.8.1=hb9d3cd8_2
-  - liblzma-devel=5.8.1=hb9d3cd8_2
+  - _openmp_mutex=4.5=20_gnu
+  - bzip2=1.0.8=hda65f42_9
+  - ca-certificates=2026.2.25=hbd8a1cb_0
+  - icu=78.3=h33c6efd_0
+  - ld_impl_linux-64=2.45.1=default_hbd61a6d_102
+  - libexpat=2.7.5=hecca717_0
+  - libffi=3.5.2=h3435931_0
+  - libgcc=15.2.0=he0feb66_18
+  - libgcc-ng=15.2.0=h69a702a_18
+  - libgomp=15.2.0=he0feb66_18
+  - liblzma=5.8.2=hb03c661_0
   - libnsl=2.0.1=hb9d3cd8_1
-  - libsqlite=3.51.1=hf4e2dac_1
-  - libstdcxx=15.2.0=h934c35e_16
-  - libstdcxx-ng=15.2.0=hdf11a46_16
-  - libzlib=1.3.1=hb9d3cd8_2
+  - libsqlite=3.52.0=hf4e2dac_0
+  - libstdcxx=15.2.0=h934c35e_18
+  - libuuid=2.41.3=h5347b49_0
+  - libxcrypt=4.4.36=hd590300_1
+  - libzlib=1.3.2=h25fd6f3_2
   - ncurses=6.5=h2d0b736_3
-  - openssl=3.6.0=h26f9b46_0
-  - pip=24.0=pyhd8ed1ab_0
-  - python=3.7.12=hf930737_100_cpython
+  - openssl=3.6.1=h35e630c_1
+  - pip=25.2=pyh8b19718_0
+  - python=3.9.23=hc30ae73_0_cpython
   - readline=8.3=h853b02a_0
-  - setuptools=69.0.3=pyhd8ed1ab_0
-  - sqlite=3.51.1=h04a0ce9_1
-  - tk=8.6.13=noxft_ha0e22de_103
-  - wheel=0.42.0=pyhd8ed1ab_0
-  - xz=5.8.1=hbcc6ac9_2
-  - xz-gpl-tools=5.8.1=hbcc6ac9_2
-  - xz-tools=5.8.1=hb9d3cd8_2
+  - setuptools=80.9.0=pyhff2d567_0
+  - tk=8.6.13=noxft_h366c992_103
+  - tzdata=2025c=hc9c84f9_1
+  - wheel=0.45.1=pyhd8ed1ab_1
   - zstd=1.5.7=hb78ec9c_6
   - pip:
+      - annotated-doc==0.0.4
+      - anyio==4.12.1
+      - asttokens==3.0.1
       - backcall==0.2.0
-      - certifi==2025.11.12
-      - charset-normalizer==3.4.4
-      - cycler==0.11.0
-      - decorator==5.1.1
+      - certifi==2026.2.25
+      - charset-normalizer==3.4.6
+      - click==8.1.8
+      - contourpy==1.3.0
+      - cycler==0.12.1
+      - decorator==5.2.1
       - dominate==2.9.1
       - easydict==1.13
-      - fonttools==4.38.0
-      - h5py==3.8.0
-      - idna==3.10
-      - imageio==2.31.2
-      - ipython==7.34.0
+      - exceptiongroup==1.3.1
+      - executing==2.2.1
+      - filelock==3.19.1
+      - fonttools==4.60.2
+      - fsspec==2025.10.0
+      - h11==0.16.0
+      - h5py==3.14.0
+      - hf-xet==1.4.2
+      - httpcore==1.0.9
+      - httpx==0.28.1
+      - huggingface-hub==1.8.0
+      - idna==3.11
+      - imageio==2.37.2
+      - importlib-metadata==8.7.1
+      - importlib-resources==6.5.2
+      - ipython==8.18.1
       - jedi==0.19.2
-      - kiwisolver==1.4.5
-      - matplotlib==3.5.3
-      - matplotlib-inline==0.1.6
-      - networkx==2.6.3
-      - numpy==1.21.6
-      - nvidia-cublas-cu11==11.10.3.66
-      - nvidia-cuda-nvrtc-cu11==11.7.99
-      - nvidia-cuda-runtime-cu11==11.7.99
-      - nvidia-cudnn-cu11==8.5.0.96
-      - opencv-python==4.12.0.88
-      - packaging==24.0
-      - parso==0.8.5
+      - jinja2==3.1.6
+      - kiwisolver==1.4.7
+      - lazy-loader==0.5
+      - lightning-utilities==0.15.2
+      - markdown-it-py==3.0.0
+      - markupsafe==3.0.3
+      - matplotlib==3.9.4
+      - matplotlib-inline==0.2.1
+      - mdurl==0.1.2
+      - mpmath==1.3.0
+      - networkx==3.2.1
+      - numpy==2.0.2
+      - nvidia-cublas-cu11==11.11.3.6
+      - nvidia-cublas-cu12==12.8.4.1
+      - nvidia-cuda-cupti-cu12==12.8.90
+      - nvidia-cuda-nvrtc-cu11==11.8.89
+      - nvidia-cuda-nvrtc-cu12==12.8.93
+      - nvidia-cuda-runtime-cu11==11.8.89
+      - nvidia-cuda-runtime-cu12==12.8.90
+      - nvidia-cudnn-cu11==9.10.2.21
+      - nvidia-cudnn-cu12==9.10.2.21
+      - nvidia-cufft-cu12==11.3.3.83
+      - nvidia-cufile-cu12==1.13.1.3
+      - nvidia-curand-cu12==10.3.9.90
+      - nvidia-cusolver-cu12==11.7.3.90
+      - nvidia-cusparse-cu12==12.5.8.93
+      - nvidia-cusparselt-cu12==0.7.1
+      - nvidia-nccl-cu12==2.27.3
+      - nvidia-nvjitlink-cu12==12.8.93
+      - nvidia-nvtx-cu12==12.8.90
+      - opencv-python==4.13.0.92
+      - packaging==26.0
+      - parso==0.8.6
       - pexpect==4.9.0
       - pickleshare==0.7.5
-      - pillow==9.5.0
-      - prompt-toolkit==3.0.48
-      - protobuf==4.24.4
+      - pillow==11.3.0
+      - prompt-toolkit==3.0.52
+      - protobuf==6.33.6
       - ptyprocess==0.7.0
-      - pygments==2.17.2
-      - pyparsing==3.1.4
+      - pure-eval==0.2.3
+      - pygments==2.20.0
+      - pyparsing==3.3.2
       - python-dateutil==2.9.0.post0
-      - pywavelets==1.3.0
-      - pyyaml==6.0.1
-      - requests==2.31.0
-      - scikit-image==0.19.3
-      - scipy==1.7.3
+      - pywavelets==1.6.0
+      - pyyaml==6.0.3
+      - requests==2.32.5
+      - rich==14.3.3
+      - safetensors==0.7.0
+      - scikit-image==0.24.0
+      - scipy==1.13.1
+      - shellingham==1.5.4
+      - simpleitk==2.5.3
       - six==1.17.0
-      - tensorboardx==2.6.2.2
-      - tifffile==2021.11.2
-      - torch==1.13.1
-      - torchmetrics==0.11.4
-      - torchvision==0.14.1
-      - tqdm==4.67.1
-      - traitlets==5.9.0
-      - typing-extensions==4.7.1
-      - urllib3==2.0.7
-      - wcwidth==0.2.14
-prefix: /home/matheus/miniforge3/envs/AECT-GAN
+      - stack-data==0.6.3
+      - sympy==1.14.0
+      - tensorboardx==2.6.4
+      - tifffile==2024.8.30
+      - timm==1.0.26
+      - torch==2.8.0
+      - torchmetrics==1.8.2
+      - torchvision==0.23.0
+      - tqdm==4.67.3
+      - traitlets==5.14.3
+      - triton==3.4.0
+      - typer==0.23.2
+      - typing-extensions==4.15.0
+      - urllib3==2.6.3
+      - wcwidth==0.6.0
+      - zipp==3.23.0
+prefix: /home/matheus/miniforge3/envs/AECT-GAN-39
