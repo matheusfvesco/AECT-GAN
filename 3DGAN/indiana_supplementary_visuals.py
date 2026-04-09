@@ -9,6 +9,7 @@
 
 import argparse
 import copy
+import json
 import os
 from collections import defaultdict
 from pathlib import Path
@@ -34,6 +35,33 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 # Import the self-contained xray classifier
 from lib.xray_classifier import classify_xray_view, _preprocess_array
+
+
+def load_classification_cache(cache_path):
+    """Load classification cache from JSON file."""
+    if os.path.exists(cache_path):
+        with open(cache_path, 'r') as f:
+            return json.load(f)
+    return {}
+
+
+def save_classification_to_cache(cache_path, image_path, view_type):
+    """Save a single classification to the cache JSON file."""
+    cache = load_classification_cache(cache_path)
+    cache[str(image_path)] = view_type
+    with open(cache_path, 'w') as f:
+        json.dump(cache, f, indent=2)
+
+
+def get_cached_or_classify(image_path, cache_path, classifier_weights, img_array):
+    """Check cache for classification, classify if not found, and save to cache."""
+    cache = load_classification_cache(cache_path)
+    image_path_str = str(image_path)
+    if image_path_str in cache:
+        return cache[image_path_str]
+    view_type = classify_xray_view(img_array, weights_path=classifier_weights)
+    save_classification_to_cache(cache_path, image_path_str, view_type)
+    return view_type
 
 
 def parse_args():
@@ -67,6 +95,10 @@ def parse_args():
                         default="save_models/xray_classifier.pth",
                         dest="classifier_weights",
                         help="path to xray classifier weights")
+    parse.add_argument("--cache", type=str,
+                        default="data/indiana_xray_classification_cache.json",
+                        dest="cache",
+                        help="path to classification cache JSON file")
     args = parse.parse_args()
     return args
 
@@ -104,9 +136,10 @@ def group_images_by_patient(indiana_dir):
     return groups
 
 
-def classify_and_pair_images(patient_groups, classifier_weights, fine_size=128):
+def classify_and_pair_images(patient_groups, classifier_weights, cache_path, fine_size=128):
     """
     Classify each image as frontal or lateral and pair them per patient.
+    Uses JSON cache to avoid re-classifying images.
     Returns list of dicts: {'patient_id': str, 'frontal': PIL.Image, 'lateral': PIL.Image}
     """
     paired_samples = []
@@ -135,13 +168,15 @@ def classify_and_pair_images(patient_groups, classifier_weights, fine_size=128):
         if len(patient_images) < 2:
             continue
 
-        # Classify each image
+        # Classify each image (using cache)
         frontal_images = []
         lateral_images = []
 
         for img_data in patient_images:
             try:
-                view_type = classify_xray_view(img_data['array'], weights_path=classifier_weights)
+                view_type = get_cached_or_classify(
+                    img_data['path'], cache_path, classifier_weights, img_data['array']
+                )
                 img_data['view'] = view_type
                 if view_type == 'frontal':
                     frontal_images.append(img_data)
@@ -516,6 +551,7 @@ def generate_visualizations(args):
     paired_samples = classify_and_pair_images(
         patients_with_2plus,
         args.classifier_weights,
+        args.cache,
         fine_size=fine_size
     )
     print(f"Found {len(paired_samples)} patients with valid pairs")

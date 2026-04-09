@@ -87,11 +87,11 @@ def parse_args():
         help="if specified, print more debugging information",
     )
     parse.add_argument(
-        "--load_path",
+        "--model_root",
         type=str,
         default=None,
-        dest="load_path",
-        help="if load_path is not None, model will load from load_path",
+        dest="model_root",
+        help="Root path to model weights directory",
     )
     parse.add_argument(
         "--how_many",
@@ -129,16 +129,37 @@ def normalize_for_display(img, vmin=None, vmax=None):
 def create_pdf_visualization(samples, output_path, checkpoint_num):
     """
     Create a PDF with each sample on a page showing:
-    - Top-right: xray1 and xray2 (if available) - positioned in corner
-    - Below: Ground Truth CT and Generated CT side by side (sampled slices)
+    - Top row: xray1 and xray2 (if available)
+    - Second row: GT CT and 4 columns of Generated CTs (one per model variant)
+      Columns: d2_multiview2500 | synthetic | real | mixed
     """
+    from collections import OrderedDict
+
+    # Group samples by name - each group has 4 variants
+    grouped = OrderedDict()
+    for sample in samples:
+        name = sample["name"]
+        if name not in grouped:
+            grouped[name] = []
+        grouped[name].append(sample)
+
+    # Define column order and labels
+    VARIANT_COLS = [
+        ("d2_multiview2500", "Original"),
+        ("multiview-GAN-dataset-complete-clipped-shifted", "Synthetic"),
+        ("multiview-GAN-dataset-complete-clipped-shifted-real", "Real"),
+        ("multiview-GAN-dataset-complete-clipped-shifted-real_mixed", "Mixed"),
+    ]
+
     with PdfPages(str(output_path)) as pdf:
-        for sample in tqdm(samples, desc="Creating PDF pages"):
-            name = sample["name"]
-            gt_ct = sample["gt"]
-            fake_ct = sample["fake"]
-            xray1 = sample.get("xray1")
-            xray2 = sample.get("xray2")
+        for name, variant_samples in tqdm(grouped.items(), desc="Creating PDF pages"):
+            # Build dict keyed by variant for easy access
+            by_variant = {s["model_variant"]: s for s in variant_samples}
+
+            # Get common data (same across variants)
+            gt_ct = variant_samples[0]["gt"]
+            xray1 = variant_samples[0].get("xray1")
+            xray2 = variant_samples[0].get("xray2")
 
             # Determine number of slices to show (every 10th slice)
             step = 10
@@ -151,36 +172,27 @@ def create_pdf_visualization(samples, output_path, checkpoint_num):
 
             n_slices = len(slice_indices)
 
-            # Layout: CT slices take most of the page, xrays in top-right corner
-            # Use GridSpec for precise control
-            fig_height = 1 + n_slices * 3.0
-            fig = plt.figure(figsize=(14, fig_height))
+            # Layout: xrays at top, then GT + 4 variants per row
+            # 5 columns: [GT | d2 | synthetic | real | mixed]
+            # n_slices rows of CT slices + 1 row for xrays at top
+            fig_height = 2 + n_slices * 2.5
+            fig = plt.figure(figsize=(20, fig_height))
 
-            # Title at very top
+            # Title
             fig.suptitle(f"Sample: {name}", fontsize=14, fontweight="bold", y=0.98)
 
-            # Create gridspec: top row for xrays (narrow, right portion), rest for CT slices
-            gs = fig.add_gridspec(
-                nrows=n_slices + 1, ncols=2,
-                height_ratios=[0.8] + [1.0] * n_slices,
-                width_ratios=[1, 1],
-                hspace=0.15, wspace=0.1,
-                top=0.93, bottom=0.02, right=0.85
-            )
-
-            # X-rays in a narrower box at top-right (columns span full width of right 35%)
-            # Create inner gridspec for xrays side by side
+            # X-ray row at top
             gs_xray = fig.add_gridspec(
                 nrows=1, ncols=2,
                 wspace=0.05,
-                top=0.93, bottom=0.88, left=0.55, right=0.98
+                top=0.94, bottom=0.88, left=0.02, right=0.98
             )
 
             if xray1 is not None:
                 ax_x1 = fig.add_subplot(gs_xray[0])
                 xray1_display = xray1.squeeze() if xray1.ndim > 2 else xray1
                 ax_x1.imshow(xray1_display, cmap="gray", interpolation="nearest")
-                ax_x1.set_title("Frontal X-Ray (xray1)", fontsize=10)
+                ax_x1.set_title("Frontal X-Ray", fontsize=10)
                 ax_x1.axis('off')
             else:
                 ax_x1 = fig.add_subplot(gs_xray[0])
@@ -191,41 +203,53 @@ def create_pdf_visualization(samples, output_path, checkpoint_num):
                 ax_x2 = fig.add_subplot(gs_xray[1])
                 xray2_display = xray2.squeeze() if xray2.ndim > 2 else xray2
                 ax_x2.imshow(xray2_display, cmap="gray", interpolation="nearest")
-                ax_x2.set_title("Lateral X-Ray (xray2)", fontsize=10)
+                ax_x2.set_title("Lateral X-Ray", fontsize=10)
                 ax_x2.axis('off')
             else:
                 ax_x2 = fig.add_subplot(gs_xray[1])
                 ax_x2.text(0.5, 0.5, "No Lateral X-Ray", ha='center', va='center')
                 ax_x2.axis('off')
 
-            # CT slices: each row has GT (col 0) and Fake (col 1) spanning left 55% of figure
+            # CT slices: each row has 5 columns [GT | d2 | synthetic | real | mixed]
             gs_ct = fig.add_gridspec(
-                nrows=n_slices, ncols=2,
+                nrows=n_slices, ncols=5,
                 height_ratios=[1.0] * n_slices,
-                width_ratios=[1, 1],
-                hspace=0.15, wspace=0.08,
+                width_ratios=[1, 1, 1, 1, 1],
+                hspace=0.15, wspace=0.05,
                 top=0.85, bottom=0.02, left=0.02, right=0.98
             )
 
             for row_idx, slice_idx in enumerate(slice_indices):
                 gt_slice = gt_ct[slice_idx]
-                fake_slice = fake_ct[slice_idx]
 
-                # Compute shared vmin/vmax for consistent display
-                vmin = min(np.nanmin(gt_slice), np.nanmin(fake_slice))
-                vmax = max(np.nanmax(gt_slice), np.nanmax(fake_slice))
+                # Get all variant slices and compute shared vmin/vmax
+                variant_slices = {}
+                all_min = np.nanmin(gt_slice)
+                all_max = np.nanmax(gt_slice)
+                for variant_key, _ in VARIANT_COLS:
+                    if variant_key in by_variant:
+                        fake_slice = by_variant[variant_key]["fake"][slice_idx]
+                        variant_slices[variant_key] = fake_slice
+                        all_min = min(all_min, np.nanmin(fake_slice))
+                        all_max = max(all_max, np.nanmax(fake_slice))
 
-                # GT slice (right column)
-                ax_gt = fig.add_subplot(gs_ct[row_idx, 1])
-                ax_gt.imshow(gt_slice, cmap="gray", vmin=vmin, vmax=vmax, interpolation="nearest")
-                ax_gt.set_title(f"GT - Slice {slice_idx}/{depth-1}", fontsize=9)
+                # GT slice (column 0)
+                ax_gt = fig.add_subplot(gs_ct[row_idx, 0])
+                ax_gt.imshow(gt_slice, cmap="gray", vmin=all_min, vmax=all_max, interpolation="nearest")
+                if row_idx == 0:
+                    ax_gt.set_title(f"GT", fontsize=9, fontweight="bold")
                 ax_gt.axis('off')
 
-                # Fake slice (left column)
-                ax_fake = fig.add_subplot(gs_ct[row_idx, 0])
-                ax_fake.imshow(fake_slice, cmap="gray", vmin=vmin, vmax=vmax, interpolation="nearest")
-                ax_fake.set_title(f"Generated - Slice {slice_idx}/{depth-1}", fontsize=9)
-                ax_fake.axis('off')
+                # Variant slices (columns 1-4)
+                for col_idx, (variant_key, label) in enumerate(VARIANT_COLS):
+                    ax_var = fig.add_subplot(gs_ct[row_idx, col_idx + 1])
+                    if variant_key in variant_slices:
+                        ax_var.imshow(variant_slices[variant_key], cmap="gray", vmin=all_min, vmax=all_max, interpolation="nearest")
+                        if row_idx == 0:
+                            ax_var.set_title(f"{label}", fontsize=9)
+                    else:
+                        ax_var.text(0.5, 0.5, "N/A", ha='center', va='center')
+                    ax_var.axis('off')
 
             pdf.savefig(fig, dpi=150)
             plt.close(fig)
@@ -236,19 +260,40 @@ def create_html_visualization(samples, output_dir, checkpoint_num):
     Create per-patient HTML visualizations with:
     - Patient name
     - Xray1 and xray2 images
-    - GT and Fake CTs side by side as 3D viewer (slices)
+    - GT CT and 4 columns of Generated CTs (one per model variant)
+      Columns: d2_multiview2500 | synthetic | real | mixed
     """
+    from collections import OrderedDict
+
     # Create main output directory
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Create subdirectory for each patient
-    for sample in tqdm(samples, desc="Creating HTML per patient"):
+    # Group samples by name - each group has 4 variants
+    grouped = OrderedDict()
+    for sample in samples:
         name = sample["name"]
-        gt_ct = sample["gt"]
-        fake_ct = sample["fake"]
-        xray1 = sample.get("xray1")
-        xray2 = sample.get("xray2")
+        if name not in grouped:
+            grouped[name] = []
+        grouped[name].append(sample)
+
+    # Define column order and labels
+    VARIANT_COLS = [
+        ("d2_multiview2500", "Original"),
+        ("multiview-GAN-dataset-complete-clipped-shifted", "Synthetic"),
+        ("multiview-GAN-dataset-complete-clipped-shifted-real", "Real"),
+        ("multiview-GAN-dataset-complete-clipped-shifted-real_mixed", "Mixed"),
+    ]
+
+    # Create subdirectory for each patient
+    for name, variant_samples in tqdm(grouped.items(), desc="Creating HTML per patient"):
+        # Build dict keyed by variant for easy access
+        by_variant = {s["model_variant"]: s for s in variant_samples}
+
+        # Get common data (same across variants)
+        gt_ct = variant_samples[0]["gt"]
+        xray1 = variant_samples[0].get("xray1")
+        xray2 = variant_samples[0].get("xray2")
 
         patient_dir = output_dir / name
         patient_dir.mkdir(parents=True, exist_ok=True)
@@ -262,11 +307,9 @@ def create_html_visualization(samples, output_dir, checkpoint_num):
         if len(slice_indices) > 15:
             slice_indices = slice_indices[:15]
 
+        # GT slice paths
         slice_paths_gt = []
-        slice_paths_fake = []
-
         for slice_idx in slice_indices:
-            # GT slice
             fig_gt, ax_gt = plt.subplots(figsize=(4, 4))
             gt_slice = gt_ct[slice_idx]
             vmin, vmax = np.nanmin(gt_slice), np.nanmax(gt_slice)
@@ -278,18 +321,43 @@ def create_html_visualization(samples, output_dir, checkpoint_num):
             plt.close(fig_gt)
             slice_paths_gt.append(gt_path)
 
-            # Fake slice
-            fig_fake, ax_fake = plt.subplots(figsize=(4, 4))
-            fake_slice = fake_ct[slice_idx]
-            vmin = min(vmin, np.nanmin(fake_slice))
-            vmax = max(vmax, np.nanmax(fake_slice))
-            ax_fake.imshow(fake_slice, cmap="gray", vmin=vmin, vmax=vmax, interpolation="nearest")
-            ax_fake.set_title(f"Generated Slice {slice_idx}")
-            ax_fake.axis('off')
-            fake_path = patient_dir / f"fake_slice_{slice_idx}.png"
-            fig_fake.savefig(str(fake_path), dpi=100, bbox_inches='tight')
-            plt.close(fig_fake)
-            slice_paths_fake.append(fake_path)
+        # Variant slice paths
+        variant_slice_paths = {variant_key: [] for variant_key, _ in VARIANT_COLS}
+        for slice_idx in slice_indices:
+            # Get all variant slices and compute shared vmin/vmax
+            gt_slice = gt_ct[slice_idx]
+            all_min = np.nanmin(gt_slice)
+            all_max = np.nanmax(gt_slice)
+            variant_slices = {}
+            for variant_key, _ in VARIANT_COLS:
+                if variant_key in by_variant:
+                    fake_slice = by_variant[variant_key]["fake"][slice_idx]
+                    variant_slices[variant_key] = fake_slice
+                    all_min = min(all_min, np.nanmin(fake_slice))
+                    all_max = max(all_max, np.nanmax(fake_slice))
+
+            # Save GT slice
+            fig, axes = plt.subplots(1, 5, figsize=(20, 4))
+            axes[0].imshow(gt_slice, cmap="gray", vmin=all_min, vmax=all_max, interpolation="nearest")
+            axes[0].set_title("GT", fontsize=10)
+            axes[0].axis('off')
+
+            # Save variant slices
+            for col_idx, (variant_key, label) in enumerate(VARIANT_COLS):
+                if variant_key in variant_slices:
+                    fake_slice = variant_slices[variant_key]
+                    variant_path = patient_dir / f"variant_{variant_key}_slice_{slice_idx}.png"
+                    fig_v, ax_v = plt.subplots(figsize=(4, 4))
+                    ax_v.imshow(fake_slice, cmap="gray", vmin=all_min, vmax=all_max, interpolation="nearest")
+                    ax_v.set_title(f"{label}", fontsize=9)
+                    ax_v.axis('off')
+                    fig_v.savefig(str(variant_path), dpi=100, bbox_inches='tight')
+                    plt.close(fig_v)
+                    variant_slice_paths[variant_key].append(variant_path)
+                else:
+                    variant_slice_paths[variant_key].append(None)
+
+            plt.close(fig)
 
         # Save xray images if available
         xray1_path = None
@@ -326,15 +394,17 @@ def create_html_visualization(samples, output_dir, checkpoint_num):
         .patient-info {{ background-color: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; }}
         .xray-container {{ display: flex; justify-content: center; gap: 20px; margin: 20px 0; }}
         .xray-container img {{ max-width: 300px; border: 2px solid #ddd; border-radius: 4px; }}
-        .ct-container {{ display: flex; flex-direction: column; align-items: center; gap: 10px; }}
-        .ct-row {{ display: flex; justify-content: center; gap: 40px; }}
-        .ct-pair {{ text-align: center; }}
-        .ct-pair img {{ display: block; margin: 0 auto; border: 1px solid #999; }}
+        .ct-table {{ display: flex; flex-direction: column; align-items: center; gap: 10px; margin: 20px 0; }}
+        .ct-row {{ display: flex; justify-content: center; gap: 20px; }}
+        .ct-col {{ text-align: center; }}
+        .ct-col img {{ display: block; margin: 0 auto; border: 1px solid #999; max-width: 250px; }}
         .slice-label {{ font-size: 12px; color: #666; margin-top: 5px; }}
-        .legend {{ display: flex; justify-content: center; gap: 40px; margin: 10px 0; font-weight: bold; }}
-        .legend span {{ padding: 5px 15px; border-radius: 4px; }}
-        .legend-gt {{ background-color: #e8f5e9; }}
-        .legend-fake {{ background-color: #ffebee; }}
+        .col-header {{ font-weight: bold; margin-bottom: 10px; padding: 5px 10px; border-radius: 4px; }}
+        .header-gt {{ background-color: #e8f5e9; }}
+        .header-d2 {{ background-color: #e3f2fd; }}
+        .header-synth {{ background-color: #fff3e0; }}
+        .header-real {{ background-color: #f3e5f5; }}
+        .header-mixed {{ background-color: #e0f7fa; }}
         .metadata {{ color: #777; font-size: 14px; margin-top: 20px; }}
     </style>
 </head>
@@ -356,32 +426,32 @@ def create_html_visualization(samples, output_dir, checkpoint_num):
 
         html_content += """    </div>
 
-    <h2>Computed Tomography (CT) Comparison</h2>
-    <div class="legend">
-        <span class="legend-gt">Ground Truth (GT)</span>
-        <span class="legend-fake">Generated (Fake)</span>
-    </div>
-    <div class="ct-container">
+    <h2>CT Comparison: GT vs Generated from 4 Model Variants</h2>
+    <div class="ct-table">
 """
-
         for slice_idx in slice_indices:
             gt_path_str = f"gt_slice_{slice_idx}.png"
-            fake_path_str = f"fake_slice_{slice_idx}.png"
             html_content += f"""        <div class="ct-row">
-            <div class="ct-pair">
-                <img src="{fake_path_str}" alt="Fake Slice {slice_idx}">
-                <div class="slice-label">Generated - Slice {slice_idx}</div>
-            </div>
-            <div class="ct-pair">
+            <div class="ct-col">
+                <div class="col-header header-gt">GT</div>
                 <img src="{gt_path_str}" alt="GT Slice {slice_idx}">
-                <div class="slice-label">GT - Slice {slice_idx}</div>
+                <div class="slice-label">Slice {slice_idx}</div>
             </div>
-        </div>
 """
+            for variant_key, label in VARIANT_COLS:
+                variant_path = variant_slice_paths[variant_key][slice_indices.index(slice_idx)]
+                if variant_path is not None:
+                    html_content += f"""            <div class="ct-col">
+                <div class="col-header header-{variant_key[:6]}">{label}</div>
+                <img src="{variant_path.name}" alt="{label} Slice {slice_idx}">
+                <div class="slice-label">Slice {slice_idx}</div>
+            </div>
+"""
+            html_content += "        </div>\n"
 
         html_content += """    </div>
     <div class="metadata">
-        <p>Generated by supplementary_visuals.py | AECT-GAN 3DGAN</p>
+        <p>Generated by comparison_visuals.py | AECT-GAN 3DGAN</p>
     </div>
 </body>
 </html>
@@ -392,7 +462,120 @@ def create_html_visualization(samples, output_dir, checkpoint_num):
             f.write(html_content)
 
 
+def run_inference_single(model_variant, model_root, data, opt):
+    """
+    Loads model weights for a given variant and runs inference on a single sample.
+    Model is loaded fresh on each call and unloaded when function returns.
+
+    Args:
+        model_variant: e.g. "d2_multiview2500"
+        model_root: root path to model weights
+        data: a single data sample from the dataloader
+        opt: pre-initialized config object (all params same across variants)
+
+    Returns:
+        sample: dict with 'name', 'gt', 'fake', 'xray1', 'xray2'
+    """
+    # Build load_path
+    load_path = f"{model_root.rstrip('/')}/{model_variant}/checkpoint"
+
+    # Just override load_path - rest of config comes from pre-built opt
+    opt_variant = copy.deepcopy(opt)
+    opt_variant.load_path = load_path
+
+    # Get model
+    gan_model = get_model(opt_variant.model_class)()
+    gan_model.eval()
+    gan_model.init_process(opt_variant)
+    gan_model.setup(opt_variant)
+
+    # Set to test Mode again
+    if "batch" in opt_variant.norm_G:
+        gan_model.eval()
+    elif "instance" in opt_variant.norm_G:
+        gan_model.eval()
+        for name, m in gan_model.named_modules():
+            if m.__class__.__name__.startswith("InstanceNorm"):
+                m.train()
+    else:
+        raise NotImplementedError()
+
+    # Run inference on single sample
+    gan_model.set_input(data)
+    gan_model.test()
+
+    visuals = gan_model.get_current_visuals()
+    img_path = gan_model.get_image_paths()
+
+    # Extract sample name
+    name1 = os.path.splitext(os.path.basename(img_path[0][0]))[0]
+    name2 = os.path.split(os.path.dirname(img_path[0][0]))[-1]
+    name = name2 + "_" + name1
+
+    # Get CTs
+    generate_CT = visuals["G_fake"].data.clone().cpu().numpy()
+    real_CT = visuals["G_real"].data.clone().cpu().numpy()
+
+    # Transpose and unnormalize
+    if "std" in opt_variant.dataset_class or "baseline" in opt_variant.dataset_class:
+        generate_CT_transpose = generate_CT
+        real_CT_transpose = real_CT
+    else:
+        generate_CT_transpose = np.transpose(generate_CT, (0, 2, 1, 3))
+        real_CT_transpose = np.transpose(real_CT, (0, 2, 1, 3))
+
+    generate_CT_transpose = tensor_back_to_unnormalization(
+        generate_CT_transpose, opt_variant.CT_MEAN_STD[0], opt_variant.CT_MEAN_STD[1]
+    )
+    real_CT_transpose = tensor_back_to_unnormalization(
+        real_CT_transpose, opt_variant.CT_MEAN_STD[0], opt_variant.CT_MEAN_STD[1]
+    )
+    generate_CT_transpose = np.clip(generate_CT_transpose, 0, 1)
+
+    # Get xrays
+    xray1 = None
+    xray2 = None
+    if "G_input1" in visuals:
+        xray1 = visuals["G_input1"].data.clone().cpu().numpy()[0].astype(np.float32)
+        if hasattr(opt_variant, 'XRAY1_MEAN_STD') and opt_variant.XRAY1_MEAN_STD is not None:
+            xray1 = tensor_back_to_unnormalization(
+                xray1[np.newaxis, ...], opt_variant.XRAY1_MEAN_STD[0], opt_variant.XRAY1_MEAN_STD[1]
+            )[0]
+        xray1 = np.clip(xray1, 0, 1)
+
+    if "G_input2" in visuals:
+        xray2 = visuals["G_input2"].data.clone().cpu().numpy()[0].astype(np.float32)
+        if hasattr(opt_variant, 'XRAY2_MEAN_STD') and opt_variant.XRAY2_MEAN_STD is not None:
+            xray2 = tensor_back_to_unnormalization(
+                xray2[np.newaxis, ...], opt_variant.XRAY2_MEAN_STD[0], opt_variant.XRAY2_MEAN_STD[1]
+            )[0]
+        xray2 = np.clip(xray2, 0, 1)
+
+    sample = {
+        "name": name,
+        "gt": real_CT_transpose[0],
+        "fake": generate_CT_transpose[0],
+        "xray1": xray1,
+        "xray2": xray2,
+        "model_variant": model_variant,
+    }
+
+    del gan_model, visuals, img_path
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+    return sample
+
+
 def generate_visualizations(args):
+    # List of model variants to iterate over
+    MODEL_VARIANTS = [
+        "d2_multiview2500",
+        "multiview-GAN-dataset-complete-clipped-shifted",
+        "multiview-GAN-dataset-complete-clipped-shifted-real",
+        "multiview-GAN-dataset-complete-clipped-shifted-real_mixed",
+    ]
+
     # Check gpu
     if args.gpuid == "":
         args.gpu_ids = []
@@ -440,26 +623,6 @@ def generate_visualizations(args):
     dataset_size = len(dataloader)
     print("#Test images = %d" % dataset_size)
 
-    # Get model
-    gan_model = get_model(opt.model_class)()
-    print("Model --{}-- will be Used".format(gan_model.name))
-
-    # Set to test
-    gan_model.eval()
-    gan_model.init_process(opt)
-    total_steps, epoch_count = gan_model.setup(opt)
-
-    # Must set to test Mode again
-    if "batch" in opt.norm_G:
-        gan_model.eval()
-    elif "instance" in opt.norm_G:
-        gan_model.eval()
-        for name, m in gan_model.named_modules():
-            if m.__class__.__name__.startswith("InstanceNorm"):
-                m.train()
-    else:
-        raise NotImplementedError()
-
     # Output directory structure: outputs/supplementary/{data}/{tag}/{subdir}/checkpoint_{num}
     if opt.result_subdir:
         subdir = opt.result_subdir
@@ -473,67 +636,15 @@ def generate_visualizations(args):
         if epoch_i >= opt.how_many:
             break
 
-        gan_model.set_input(data)
-        gan_model.test()
-
-        visuals = gan_model.get_current_visuals()
-        img_path = gan_model.get_image_paths()
-
-        # Extract sample name
-        name1 = os.path.splitext(os.path.basename(img_path[0][0]))[0]
-        name2 = os.path.split(os.path.dirname(img_path[0][0]))[-1]
-        name = name2 + "_" + name1
-
-        # Get CTs
-        generate_CT = visuals["G_fake"].data.clone().cpu().numpy()
-        real_CT = visuals["G_real"].data.clone().cpu().numpy()
-
-        # Transpose and unnormalize
-        if "std" in opt.dataset_class or "baseline" in opt.dataset_class:
-            generate_CT_transpose = generate_CT
-            real_CT_transpose = real_CT
-        else:
-            generate_CT_transpose = np.transpose(generate_CT, (0, 2, 1, 3))
-            real_CT_transpose = np.transpose(real_CT, (0, 2, 1, 3))
-
-        generate_CT_transpose = tensor_back_to_unnormalization(
-            generate_CT_transpose, opt.CT_MEAN_STD[0], opt.CT_MEAN_STD[1]
-        )
-        real_CT_transpose = tensor_back_to_unnormalization(
-            real_CT_transpose, opt.CT_MEAN_STD[0], opt.CT_MEAN_STD[1]
-        )
-        generate_CT_transpose = np.clip(generate_CT_transpose, 0, 1)
-
-        # Get xrays from G_input1 and G_input2 (these are the actual xray inputs)
-        xray1 = None
-        xray2 = None
-        if "G_input1" in visuals:
-            xray1 = visuals["G_input1"].data.clone().cpu().numpy()[0].astype(np.float32)
-            # Unnormalize xrays using XRAY1_MEAN_STD
-            if hasattr(opt, 'XRAY1_MEAN_STD') and opt.XRAY1_MEAN_STD is not None:
-                xray1 = tensor_back_to_unnormalization(
-                    xray1[np.newaxis, ...], opt.XRAY1_MEAN_STD[0], opt.XRAY1_MEAN_STD[1]
-                )[0]
-            xray1 = np.clip(xray1, 0, 1)
-
-        if "G_input2" in visuals:
-            xray2 = visuals["G_input2"].data.clone().cpu().numpy()[0].astype(np.float32)
-            if hasattr(opt, 'XRAY2_MEAN_STD') and opt.XRAY2_MEAN_STD is not None:
-                xray2 = tensor_back_to_unnormalization(
-                    xray2[np.newaxis, ...], opt.XRAY2_MEAN_STD[0], opt.XRAY2_MEAN_STD[1]
-                )[0]
-            xray2 = np.clip(xray2, 0, 1)
-
-        sample = {
-            "name": name,
-            "gt": real_CT_transpose[0],
-            "fake": generate_CT_transpose[0],
-            "xray1": xray1,
-            "xray2": xray2,
-        }
-        samples.append(sample)
-
-        del visuals, img_path
+        # For each sample, run inference with all model variants
+        for model_variant in MODEL_VARIANTS:
+            sample = run_inference_single(
+                model_variant=model_variant,
+                model_root=args.model_root,
+                data=data,
+                opt=opt,
+            )
+            samples.append(sample)
 
     # Create PDF
     print("Creating PDF visualization...")
