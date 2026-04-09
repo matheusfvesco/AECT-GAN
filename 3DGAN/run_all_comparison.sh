@@ -16,5 +16,39 @@ python3 comparison_visuals.py \
   --datasetfile=./data/real_test.txt \
   --resultdir=./save_models/multiView_CTGAN \
   --check_point=90 \
-  --how_many=50 \
+  --how_many=20 \
+  --model_root=./save_models/multiView_CTGAN/data/chengsq/AECT-GAN/model_dic/MultiView-AECT-GAN
+
+## Run on synthetic dataset (GAN-dataset-complete-clipped-shifted) with synthetic_test.txt
+python3 comparison_visuals.py \
+  --ymlpath=./experiment/multiview2500/d2_multiview2500.yml \
+  --gpu=0 \
+  --dataroot=./data/GAN-dataset-complete-clipped-shifted \
+  --dataset=test \
+  --tag=comparison_synthetic \
+  --result_subdir=synthetic_test \
+  --data=data/chengsq/AECT-GAN/model_dic/MultiView-AECT-GAN \
+  --dataset_class=align_ct_xray_views_std \
+  --model_class=MultiView-AECT-GAN \
+  --datasetfile=./data/synthetic_test.txt \
+  --resultdir=./save_models/multiView_CTGAN \
+  --check_point=90 \
+  --how_many=222 \
+  --model_root=./save_models/multiView_CTGAN/data/chengsq/AECT-GAN/model_dic/MultiView-AECT-GAN
+
+## Run on original dataset (LIDC-HDF5-256) with test.txt
+python3 comparison_visuals.py \
+  --ymlpath=./experiment/multiview2500/d2_multiview2500.yml \
+  --gpu=0 \
+  --dataroot=./data/LIDC-HDF5-256 \
+  --dataset=test \
+  --tag=comparison_original \
+  --result_subdir=test \
+  --data=data/chengsq/AECT-GAN/model_dic/MultiView-AECT-GAN \
+  --dataset_class=align_ct_xray_views_std \
+  --model_class=MultiView-AECT-GAN \
+  --datasetfile=./data/test.txt \
+  --resultdir=./save_models/multiView_CTGAN \
+  --check_point=90 \
+  --how_many=102 \
   --model_root=./save_models/multiView_CTGAN/data/chengsq/AECT-GAN/model_dic/MultiView-AECT-GAN
