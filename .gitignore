@@ -13,3 +13,13 @@
 *.json
 *.xml
 *.env
+*.txt
+3DGAN/data/*
+API/API_samples
+PAPER_WEBSITE/.next/
+PAPER_WEBSITE/node_modules/
+PAPER_WEBSITE/data/
+PAPER_WEBSITE/3DGAN/
+/.local/
+/plots
+*.pkl
