@@ -56,6 +56,18 @@ services:
         condition: service_healthy
     restart: always
 
+  paper-website:
+    build:
+      context: ./PAPER_WEBSITE
+      dockerfile: Dockerfile
+      target: runner
+    container_name: aect-paper-website
+    ports:
+      - "3001:3000"
+    environment:
+      - NODE_ENV=production
+    restart: always
+
 networks:
   default:
     name: aect-network
