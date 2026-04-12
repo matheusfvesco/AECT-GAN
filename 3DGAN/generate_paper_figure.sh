@@ -1,6 +1,46 @@
 #!/usr/bin/env bash
 
+cd /home/matheus/Documents/Projects/AECT-GAN/3DGAN
 
-python generate_indiana_paper_figure.py --patient_id CXR1070 --num_slices 5
+# Indiana cases
+python generate_indiana_paper_figure.py \
+    --patient_id CXR1070 \
+    --num_slices 6
 
-python generate_indiana_paper_figure.py --patient_id CXR1074 --num_slices 5
+python generate_indiana_paper_figure.py \
+    --patient_id CXR1074 \
+    --num_slices 6
+
+# Real test cases (real x-rays, real test.txt)
+python generate_comparison_figure.py \
+    --tag real_test \
+    --patient_id LIDC-IDRI-0013 \
+    --num_slices 6 \
+    --dataroot data/GAN-dataset-complete-clipped-shifted-real \
+    --datasetfile data/real_test.txt
+
+# Synthetic test cases (synthetic x-rays, synthetic_test.txt)
+python generate_comparison_figure.py \
+    --tag synthetic_test \
+    --patient_id LIDC-IDRI-0013 \
+    --num_slices 6 \
+    --dataroot data/GAN-dataset-complete-clipped-shifted \
+    --datasetfile data/synthetic_test.txt
+
+# Real test cases (real x-rays, real test.txt)
+python generate_comparison_figure.py \
+    --tag real_test \
+    --patient_id LIDC-IDRI-0105 \
+    --num_slices 6 \
+    --dataroot data/GAN-dataset-complete-clipped-shifted-real \
+    --datasetfile data/real_test.txt
+
+# Synthetic test cases (synthetic x-rays, synthetic_test.txt)
+python generate_comparison_figure.py \
+    --tag synthetic_test \
+    --patient_id LIDC-IDRI-0105 \
+    --num_slices 6 \
+    --dataroot data/GAN-dataset-complete-clipped-shifted \
+    --datasetfile data/synthetic_test.txt
+
+
