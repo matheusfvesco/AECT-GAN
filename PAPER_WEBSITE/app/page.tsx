@@ -24,16 +24,16 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto mt-12">
+        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto mt-12">
           {/* Synthetic Trained Model Card */}
-          <div className="bg-slate-800 border border-slate-700 rounded-xl p-8 hover:border-blue-500 transition-colors">
+          <div className="flex flex-col h-full bg-slate-800 border border-slate-700 rounded-xl p-8 hover:border-blue-500 transition-colors">
             <div className="text-blue-400 mb-4">
               <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
             </div>
             <h3 className="text-2xl font-semibold mb-3">Synthetic Trained</h3>
-            <p className="text-slate-400 mb-6">
+            <p className="text-slate-400 mb-6 flex-grow">
               Model trained exclusively on synthetic data generated from real CT volumes.
               View results on both the test set (with ground truth CT) and Indiana University dataset.
             </p>
@@ -48,14 +48,14 @@ export default function Home() {
           </div>
 
           {/* Mixed Training Model Card */}
-          <div className="bg-slate-800 border border-slate-700 rounded-xl p-8 hover:border-purple-500 transition-colors">
+          <div className="flex flex-col h-full bg-slate-800 border border-slate-700 rounded-xl p-8 hover:border-purple-500 transition-colors">
             <div className="text-purple-400 mb-4">
               <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
               </svg>
             </div>
             <h3 className="text-2xl font-semibold mb-3">Mixed Training</h3>
-            <p className="text-slate-400 mb-6">
+            <p className="text-slate-400 mb-6 flex-grow">
               Model trained on a combination of synthetic and real data. This approach
               helps bridge the domain gap between synthetic training and real-world X-rays.
             </p>
@@ -64,6 +64,28 @@ export default function Home() {
                 Real Test Set
               </Link>
               <Link href="/mixed/indiana" className="block w-full text-center px-6 py-3 bg-slate-700 text-white font-semibold rounded-lg hover:bg-slate-600 transition-colors">
+                Indiana University
+              </Link>
+            </div>
+          </div>
+
+          {/* Real Trained Model Card */}
+          <div className="flex flex-col h-full bg-slate-800 border border-slate-700 rounded-xl p-8 hover:border-green-500 transition-colors">
+            <div className="text-green-400 mb-4">
+              <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+            </div>
+            <h3 className="text-2xl font-semibold mb-3">Real Trained</h3>
+            <p className="text-slate-400 mb-6 flex-grow">
+              Model trained exclusively on real patient X-ray data. This approach
+              may generalize better to clinical data but requires more careful training.
+            </p>
+            <div className="space-y-3">
+              <Link href="/real/real-test" className="block w-full text-center px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors">
+                Real Test Set
+              </Link>
+              <Link href="/real/indiana" className="block w-full text-center px-6 py-3 bg-slate-700 text-white font-semibold rounded-lg hover:bg-slate-600 transition-colors">
                 Indiana University
               </Link>
             </div>

@@ -16,6 +16,8 @@ export async function GET(request: NextRequest) {
     'synthetic-indiana': 'data/synthetic-indiana',
     'mixed-real-test': 'data/mixed-real-test',
     'mixed-indiana': 'data/mixed-indiana',
+    'real-real-test': 'data/real-real-test',
+    'real-indiana': 'data/real-indiana',
   };
 
   const relativePath = datasetPaths[dataset];
