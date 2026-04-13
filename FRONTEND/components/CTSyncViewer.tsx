@@ -78,7 +78,7 @@ export function CTSyncViewer({
     <div className="flex flex-col items-center">
       {/* Slice indicator */}
       <div className="text-slate-300 text-lg mb-4 font-mono">
-        {currentSlice + 1} / {totalSlices}
+        Slice {currentSlice + 1} / {totalSlices}
       </div>
 
       {/* Size selector buttons */}

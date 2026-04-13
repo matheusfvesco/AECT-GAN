@@ -15,12 +15,12 @@ const modelInfo = {
   synthetic: {
     label: 'Synthetic CT Model',
     tooltip: 'Trained with 2006 CT samples (DRR X-ray pairs)',
-    color: 'purple',
+    color: 'blue',
   },
   mixed: {
     label: 'Mixed CT Model',
     tooltip: 'Trained with 2006 CT samples: 182 real X-ray pairs + 1824 DRR pairs',
-    color: 'cyan',
+    color: 'purple',
   },
 };
 
@@ -38,9 +38,9 @@ export function MetricsPanel({ metrics }: MetricsPanelProps) {
             className={`px-3 py-1 rounded-full text-sm font-medium cursor-help ${
               info.color === 'green'
                 ? 'bg-green-900/50 text-green-400 border border-green-700'
-                : info.color === 'purple'
-                ? 'bg-purple-900/50 text-purple-400 border border-purple-700'
-                : 'bg-cyan-900/50 text-cyan-400 border border-cyan-700'
+                : info.color === 'blue'
+                ? 'bg-blue-900/50 text-blue-400 border border-blue-700'
+                : 'bg-purple-900/50 text-purple-400 border border-purple-700'
             }`}
           >
             {info.label}

@@ -40,8 +40,10 @@ export default function EvaluatePage() {
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-white">AECT-GAN Evaluate</h1>
-              <p className="text-slate-400 text-sm">Evaluate model performance with ground truth comparison</p>
+              <Link href="/" className="hover:text-blue-400 transition-colors">
+                <h1 className="text-2xl font-bold text-white">AECT-GAN Evaluate</h1>
+              </Link>
+              <p className="text-slate-400 text-sm">Addressing Domain Shift in Dual-View X-ray to CT Reconstruction</p>
             </div>
             <div className="flex items-center gap-4">
               <Link href="/" className="px-4 py-2 text-sm bg-slate-700 hover:bg-slate-600 rounded transition-colors">Home</Link>

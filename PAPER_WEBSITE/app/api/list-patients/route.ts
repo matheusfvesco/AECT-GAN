@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     const patientDirs = entries
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
-      .sort();
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
     const patients = patientDirs.map((patientId) => {
       const patientDir = path.join(baseDir, patientId);

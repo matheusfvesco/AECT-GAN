@@ -8,19 +8,17 @@ export default function Home() {
       <header className="border-b border-slate-700 bg-slate-800/50">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <h1 className="text-2xl font-bold text-white">AECT-GAN</h1>
-          <p className="text-slate-400 text-sm">Adversarial Eulerian CT-GAN for CT synthesis from dual-view X-rays</p>
+          <p className="text-slate-400 text-sm">Addressing Domain Shift in Dual-View X-ray to CT Reconstruction</p>
         </div>
       </header>
 
       <div className="max-w-7xl mx-auto px-6 py-16">
         <div className="text-center mb-16">
-          <h2 className="text-5xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+          <h2 className="text-5xl font-bold mb-6 pb-2 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
             AECT-GAN Paper Results
           </h2>
           <p className="text-slate-400 text-lg max-w-3xl mx-auto leading-relaxed">
-            This website presents the qualitative results from our AECT-GAN model,
-            trained to reconstruct 3D CT volumes from pairs of dual-view X-ray images.
-            Explore the generated CT slices and compare them with ground truth where available.
+            We use AECT-GAN (Cheng et al.) to explore the Domain Shift in Dual-View X-ray to CT Reconstruction when using Real X-rays as inputs. Explore the generated CT slices from models trained on synthetic, mixed, and real data variants and compare them with ground truth where available.
           </p>
         </div>
 
