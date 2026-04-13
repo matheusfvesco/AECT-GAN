@@ -12,6 +12,13 @@ interface CTSyncViewerProps {
   xrayLabels?: { xray1?: string; xray2?: string; frontal?: string; lateral?: string };
 }
 
+const prefetchImage = (src: string) => {
+  if (typeof window !== 'undefined') {
+    const img = new Image();
+    img.src = src;
+  }
+};
+
 export default function CTSyncViewer({
   fakeSlices,
   gtSlices,
@@ -25,8 +32,56 @@ export default function CTSyncViewer({
   const [currentSlice, setCurrentSlice] = useState(Math.floor(totalSlices / 2));
   const [imageSize, setImageSize] = useState<128 | 256 | 512>(128);
   const containerRef = useRef<HTMLDivElement>(null);
+  const prefetchedSlices = useRef<Set<number>>(new Set());
 
   const sizeOptions: (128 | 256 | 512)[] = [128, 256, 512];
+
+  const prefetchSlices = useCallback(
+    (centerSlice: number) => {
+      const toPrefetch = [
+        centerSlice - 2,
+        centerSlice - 1,
+        centerSlice + 1,
+        centerSlice + 2,
+      ];
+      toPrefetch.forEach((idx) => {
+        if (idx >= 0 && idx < totalSlices && !prefetchedSlices.current.has(idx)) {
+          prefetchImage(fakeSlices[idx]);
+          if (gtSlices.length > 0) {
+            prefetchImage(gtSlices[idx]);
+          }
+          prefetchedSlices.current.add(idx);
+        }
+      });
+    },
+    [fakeSlices, gtSlices, totalSlices]
+  );
+
+  useEffect(() => {
+    const initialIdx = Math.floor(totalSlices / 2);
+    prefetchSlices(initialIdx);
+    if (xray1) prefetchImage(xray1);
+    if (xray2) prefetchImage(xray2);
+    if (frontal) prefetchImage(frontal);
+    if (lateral) prefetchImage(lateral);
+  }, [xray1, xray2, frontal, lateral, prefetchSlices, totalSlices]);
+
+  useEffect(() => {
+    prefetchSlices(currentSlice);
+  }, [currentSlice, prefetchSlices]);
+
+  // Detect patient change - when fakeSlices reference changes, prefetch all slices
+  useEffect(() => {
+    prefetchedSlices.current.clear();
+    fakeSlices.forEach((slice) => prefetchImage(slice));
+    if (gtSlices.length > 0) {
+      gtSlices.forEach((slice) => prefetchImage(slice));
+    }
+    if (xray1) prefetchImage(xray1);
+    if (xray2) prefetchImage(xray2);
+    if (frontal) prefetchImage(frontal);
+    if (lateral) prefetchImage(lateral);
+  }, [fakeSlices, gtSlices, xray1, xray2, frontal, lateral]);
 
   // Wheel-based navigation
   const handleWheel = useCallback(
