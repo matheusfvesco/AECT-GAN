@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import CTSyncViewer from './CTSyncViewer';
 
 interface PatientData {
@@ -31,6 +31,23 @@ export default function ImageGallery({
   const [patients, setPatients] = useState<PatientData[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  const filteredPatients = searchQuery
+    ? patients.filter((p) => p.id.toLowerCase().includes(searchQuery.toLowerCase()))
+    : [];
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     async function loadData() {
@@ -59,6 +76,15 @@ export default function ImageGallery({
     setCurrentPage((prev) => Math.min(totalPages - 1, prev + 1));
   };
 
+  const selectPatient = (patientId: string) => {
+    const index = patients.findIndex((p) => p.id === patientId);
+    if (index !== -1) {
+      setCurrentPage(index);
+      setSearchQuery('');
+      setShowDropdown(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -80,8 +106,43 @@ export default function ImageGallery({
     <div className="space-y-6">
       {/* Header */}
       <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-        <h2 className="text-2xl font-bold mb-2">{title}</h2>
-        <p className="text-slate-400">{description}</p>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold mb-2">{title}</h2>
+            <p className="text-slate-400">{description}</p>
+          </div>
+          {/* Search */}
+          <div ref={searchRef} className="relative w-full sm:w-auto">
+            <input
+              type="text"
+              placeholder="Search patient..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setShowDropdown(true);
+              }}
+              onFocus={() => setShowDropdown(true)}
+              className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 w-full sm:w-48 focus:outline-none focus:border-blue-500"
+            />
+            {showDropdown && searchQuery && (
+              <div className="absolute top-full mt-1 left-0 right-0 bg-slate-700 border border-slate-600 rounded-lg shadow-xl max-h-60 overflow-y-auto z-10">
+                {filteredPatients.length > 0 ? (
+                  filteredPatients.slice(0, 20).map((patient) => (
+                    <button
+                      key={patient.id}
+                      onClick={() => selectPatient(patient.id)}
+                      className="w-full px-4 py-2 text-left text-white hover:bg-slate-600 transition-colors"
+                    >
+                      {patient.id}
+                    </button>
+                  ))
+                ) : (
+                  <div className="px-4 py-2 text-slate-400">No patients found</div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Patient Navigation */}
