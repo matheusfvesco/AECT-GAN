@@ -14,8 +14,10 @@ export async function GET(request: NextRequest) {
   const datasetPaths: Record<string, string> = {
     'synthetic-real-test': 'data/synthetic-real-test',
     'synthetic-indiana': 'data/synthetic-indiana',
+    'synthetic-test': 'data/synthetic-test',
     'mixed-real-test': 'data/mixed-real-test',
     'mixed-indiana': 'data/mixed-indiana',
+    'mixed-test': 'data/mixed-test',
     'real-real-test': 'data/real-real-test',
     'real-indiana': 'data/real-indiana',
   };

@@ -42,6 +42,9 @@ export default function Home() {
               <Link href="/synthetic/indiana" className="block w-full text-center px-6 py-3 bg-slate-700 text-white font-semibold rounded-lg hover:bg-slate-600 transition-colors">
                 Indiana University
               </Link>
+              <Link href="/synthetic/test" className="block w-full text-center px-6 py-3 bg-slate-700 text-white font-semibold rounded-lg hover:bg-slate-600 transition-colors">
+                Synthetic Test Set
+              </Link>
             </div>
           </div>
 
@@ -63,6 +66,9 @@ export default function Home() {
               </Link>
               <Link href="/mixed/indiana" className="block w-full text-center px-6 py-3 bg-slate-700 text-white font-semibold rounded-lg hover:bg-slate-600 transition-colors">
                 Indiana University
+              </Link>
+              <Link href="/mixed/test" className="block w-full text-center px-6 py-3 bg-slate-700 text-white font-semibold rounded-lg hover:bg-slate-600 transition-colors">
+                Mixed Test Set
               </Link>
             </div>
           </div>
@@ -93,7 +99,7 @@ export default function Home() {
         <div className="mt-16 text-center">
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-8 max-w-3xl mx-auto">
             <h3 className="text-xl font-semibold mb-4 text-blue-400">About the Datasets</h3>
-            <div className="grid md:grid-cols-2 gap-6 text-left">
+            <div className="grid md:grid-cols-3 gap-6 text-left">
               <div>
                 <h4 className="font-semibold text-slate-300 mb-2">Real Test Set</h4>
                 <p className="text-slate-400 text-sm">
@@ -106,6 +112,13 @@ export default function Home() {
                 <p className="text-slate-400 text-sm">
                   Contains X-rays from the Indiana University chest X-ray dataset.
                   Reference CT volumes are not available; only generated CTs are shown.
+                </p>
+              </div>
+              <div>
+                <h4 className="font-semibold text-slate-300 mb-2">Synthetic/Mixed Test Set</h4>
+                <p className="text-slate-400 text-sm">
+                  Contains paired X-rays and reference CT volumes from the synthetic/mixed domain.
+                  Allows for evaluation of model performance on data similar to its training distribution.
                 </p>
               </div>
             </div>
