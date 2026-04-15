@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
-import { XRayViewer, CTSyncViewer } from '@/components';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { XRayViewer, CTSyncViewer, DisclaimerModal } from '@/components';
 import { X2CTPredictResponse } from '@/types';
 import { uploadZipPredict } from '@/lib/api';
 import Link from 'next/link';
@@ -51,6 +51,28 @@ export default function PredictPage() {
     setResult(null);
     setError(null);
   }, []);
+
+  const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
+
+  useEffect(() => {
+    const accepted = sessionStorage.getItem('predict_disclaimer_accepted');
+    if (accepted === 'true') setDisclaimerAccepted(true);
+  }, []);
+
+  if (!disclaimerAccepted) {
+    return (
+      <main className="min-h-screen bg-slate-900 text-white">
+        <DisclaimerModal
+          isOpen={true}
+          onAccept={() => {
+            setDisclaimerAccepted(true);
+            sessionStorage.setItem('predict_disclaimer_accepted', 'true');
+          }}
+          variant="predict"
+        />
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-slate-900 text-white">
@@ -123,7 +145,12 @@ export default function PredictPage() {
 
       <footer className="border-t border-slate-700 mt-auto">
         <div className="max-w-7xl mx-auto px-6 py-4">
-          <p className="text-slate-500 text-sm text-center">AECT-GAN Playground — Ephemeral processing. No data is stored.</p>
+          <p className="text-slate-500 text-sm text-center">
+            AECT-GAN Playground — Ephemeral processing. No data is stored.
+          </p>
+          <p className="text-slate-600 text-xs text-center mt-1">
+            Content generated through this website is not intended for clinical use. For demonstration and research purposes only.
+          </p>
         </div>
       </footer>
     </main>

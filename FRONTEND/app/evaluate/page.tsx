@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { FileUploader, XRayViewer, MetricsPanel, CTSyncViewer } from '@/components';
+import { useState, useCallback, useEffect } from 'react';
+import { FileUploader, XRayViewer, MetricsPanel, CTSyncViewer, DisclaimerModal } from '@/components';
 import { X2CTResponse } from '@/types';
 import { uploadZip } from '@/lib/api';
 import Link from 'next/link';
@@ -33,6 +33,28 @@ export default function EvaluatePage() {
     setResult(null);
     setError(null);
   }, []);
+
+  const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
+
+  useEffect(() => {
+    const accepted = sessionStorage.getItem('evaluate_disclaimer_accepted');
+    if (accepted === 'true') setDisclaimerAccepted(true);
+  }, []);
+
+  if (!disclaimerAccepted) {
+    return (
+      <main className="min-h-screen bg-slate-900 text-white">
+        <DisclaimerModal
+          isOpen={true}
+          onAccept={() => {
+            setDisclaimerAccepted(true);
+            sessionStorage.setItem('evaluate_disclaimer_accepted', 'true');
+          }}
+          variant="evaluate"
+        />
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-slate-900 text-white">
@@ -87,7 +109,12 @@ export default function EvaluatePage() {
 
       <footer className="border-t border-slate-700 mt-auto">
         <div className="max-w-7xl mx-auto px-6 py-4">
-          <p className="text-slate-500 text-sm text-center">AECT-GAN Playground — Ephemeral processing. No data is stored.</p>
+          <p className="text-slate-500 text-sm text-center">
+            AECT-GAN Playground — Ephemeral processing. No data is stored.
+          </p>
+          <p className="text-slate-600 text-xs text-center mt-1">
+            Content generated through this website is not intended for clinical use. For demonstration and research purposes only.
+          </p>
         </div>
       </footer>
     </main>

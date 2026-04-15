@@ -72,6 +72,9 @@ export default function Home() {
           <p className="text-slate-500 text-sm text-center">
             AECT-GAN Playground — Ephemeral processing. No data is stored.
           </p>
+          <p className="text-slate-600 text-xs text-center mt-1">
+            Content generated through this website is not intended for clinical use. For demonstration and research purposes only.
+          </p>
         </div>
       </footer>
     </main>
