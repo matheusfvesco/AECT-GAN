@@ -5,7 +5,7 @@ export default function SyntheticIndiana() {
     <ImageGallery
       dataset="synthetic-indiana"
       title="Synthetic Trained - Indiana University"
-      description="These samples were generated from X-rays from the Indiana University chest X-ray dataset. Reference CT volumes are not available for this dataset, so only generated CT slices are shown."
+      description="Samples were generated from Indiana University chest X-rays (external clinical data). Reference CTs are not available; only model-generated CT slices are shown."
       showGroundTruth={false}
       xrayLabels={{ frontal: 'Frontal View', lateral: 'Lateral View' }}
     />

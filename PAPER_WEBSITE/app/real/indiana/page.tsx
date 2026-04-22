@@ -5,7 +5,7 @@ export default function RealIndiana() {
     <ImageGallery
       dataset="real-indiana"
       title="Real Trained - Indiana University"
-      description="These samples are from the Indiana University chest X-ray dataset. The model was trained on real patient X-ray data and applied to this external dataset. Reference CT volumes are not available; only generated CTs are shown."
+      description="Samples were generated from Indiana University chest X-rays (external clinical data). The real-trained model was applied to this dataset. Reference CTs are not available; only model-generated CTs are displayed."
       showGroundTruth={false}
       xrayLabels={{ xray1: 'Frontal View', xray2: 'Lateral View' }}
     />

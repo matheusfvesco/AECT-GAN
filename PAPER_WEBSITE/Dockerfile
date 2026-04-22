@@ -1,9 +1,9 @@
 # ============================================================
 # AECT-GAN Paper Website Dockerfile
-# Next.js application with Node.js 20
+# Next.js application with Node.js 24
 # ============================================================
 
-FROM node:20-alpine AS base
+FROM node:24-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
@@ -47,7 +47,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/package-lock.json ./package-lock.json
-COPY --from=builder /app/data ./data
 
 USER nextjs
 

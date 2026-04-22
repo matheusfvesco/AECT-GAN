@@ -1,6 +1,8 @@
-'use client';
+"use client";
 
 import Link from 'next/link';
+import { Activity, Blend, Hospital } from 'lucide-react';
+import BrandIcon from '@/components/BrandIcon';
 
 export default function Home() {
   return (
@@ -26,14 +28,15 @@ export default function Home() {
           {/* Synthetic Trained Model Card */}
           <div className="flex flex-col h-full bg-slate-800 border border-slate-700 rounded-xl p-8 hover:border-blue-500 transition-colors">
             <div className="text-blue-400 mb-4">
-              <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
+              <BrandIcon Icon={Activity} className="text-blue-400" />
             </div>
             <h3 className="text-2xl font-semibold mb-3">Synthetic Trained</h3>
-            <p className="text-slate-400 mb-6 flex-grow">
-              Model trained exclusively on synthetic data generated from real CT volumes.
-              View results on both the test set (with ground truth CT) and Indiana University dataset.
+<p className="text-slate-400 mb-6 flex-grow">
+              Model trained exclusively on synthetic data derived from real CT volumes. View
+              outputs on three datasets: the Real Test Set (20 patients with real X-rays as
+              inputs and paired reference CTs), the Model Test Set (222 samples with
+              synthetic X-ray inputs and paired reference CTs), and the Indiana University
+              dataset (3,405 external clinical X-ray studies; no ground-truth CTs).
             </p>
             <div className="space-y-3">
               <Link href="/synthetic/real-test" className="block w-full text-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors">
@@ -51,14 +54,16 @@ export default function Home() {
           {/* Mixed Training Model Card */}
           <div className="flex flex-col h-full bg-slate-800 border border-slate-700 rounded-xl p-8 hover:border-purple-500 transition-colors">
             <div className="text-purple-400 mb-4">
-              <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-              </svg>
+              <BrandIcon Icon={Blend} className="text-purple-400" />
             </div>
             <h3 className="text-2xl font-semibold mb-3">Mixed Training</h3>
             <p className="text-slate-400 mb-6 flex-grow">
-              Model trained on a combination of synthetic and real data. This approach
-              helps bridge the domain gap between synthetic training and real-world X-rays.
+              Model trained on a combination of synthetic and real X-rays to bridge the
+              domain gap. View outputs on three datasets: the Real Test Set (20 patients
+              with real X-rays and paired reference CTs), the Model Test Set (222 samples -
+              includes synthetic versions of the same 20 real-X-ray cases plus additional
+              synthetic cases, all with paired reference CTs), and the Indiana University
+              dataset (3,405 external clinical X-ray studies; no ground-truth CTs).
             </p>
             <div className="space-y-3">
               <Link href="/mixed/real-test" className="block w-full text-center px-6 py-3 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition-colors">
@@ -76,14 +81,15 @@ export default function Home() {
           {/* Real Trained Model Card */}
           <div className="flex flex-col h-full bg-slate-800 border border-slate-700 rounded-xl p-8 hover:border-green-500 transition-colors">
             <div className="text-green-400 mb-4">
-              <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
+              <BrandIcon Icon={Hospital} className="text-green-400" />
             </div>
             <h3 className="text-2xl font-semibold mb-3">Real Trained</h3>
             <p className="text-slate-400 mb-6 flex-grow">
-              Model trained exclusively on real patient X-ray data. This approach
-              may generalize better to clinical data but requires more careful training.
+              Model trained exclusively on real patient X-rays. View outputs on the Real
+              Test Set (20 patients with paired reference CTs) and on the Indiana
+              University dataset (3,405 external clinical X-ray studies; no ground-truth
+              CTs). This approach may generalize better to clinical data, producing more
+              plausible results.
             </p>
             <div className="space-y-3">
               <Link href="/real/real-test" className="block w-full text-center px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors">
@@ -92,6 +98,9 @@ export default function Home() {
               <Link href="/real/indiana" className="block w-full text-center px-6 py-3 bg-slate-700 text-white font-semibold rounded-lg hover:bg-slate-600 transition-colors">
                 Indiana University
               </Link>
+              <div aria-hidden="true" className="invisible block w-full px-6 py-3 font-semibold rounded-lg">
+                &nbsp;
+              </div>
             </div>
           </div>
         </div>
@@ -103,22 +112,27 @@ export default function Home() {
               <div>
                 <h4 className="font-semibold text-slate-300 mb-2">Real Test Set</h4>
                 <p className="text-slate-400 text-sm">
-                  Contains paired X-rays and reference CT volumes from the LIDC-IDRI dataset.
-                  Allows for quantitative comparison between generated and ground truth CTs.
+                  Real Test Set (20 patients). Paired real X-rays (used as model inputs)
+                  and reference CTs are available; this set enables quantitative comparison
+                  between generated CT slices (blue) and ground-truth CT slices (green).
                 </p>
               </div>
               <div>
                 <h4 className="font-semibold text-slate-300 mb-2">Indiana University</h4>
                 <p className="text-slate-400 text-sm">
-                  Contains X-rays from the Indiana University chest X-ray dataset.
-                  Reference CT volumes are not available; only generated CTs are shown.
+                  Indiana University (3,405 chest X-ray studies). External clinical X-rays
+                  only; reference CTs are not available, so only model-generated CTs are
+                  displayed.
                 </p>
               </div>
               <div>
-                <h4 className="font-semibold text-slate-300 mb-2">Synthetic/Mixed Test Set</h4>
+                <h4 className="font-semibold text-slate-300 mb-2">Synthetic / Mixed Test Sets</h4>
                 <p className="text-slate-400 text-sm">
-                  Contains paired X-rays and reference CT volumes from the synthetic/mixed domain.
-                  Allows for evaluation of model performance on data similar to its training distribution.
+                  Model test split(s) with paired DRRs/X-rays and reference CTs. The
+                  Synthetic Model Test Set contains 222 synthetic X-ray samples paired
+                  with reference CTs for evaluation in the synthetic domain. The Mixed
+                  Test Set uses the same 222-sample split but 20 patients have real
+                  X-rays instead of DRRs.
                 </p>
               </div>
             </div>
