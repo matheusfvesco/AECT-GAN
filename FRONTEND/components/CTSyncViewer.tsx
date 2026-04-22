@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { getDataUrl } from '@/lib/api';
+import { CTSYNCVIEWER } from '@/src/lib/content';
 
 interface CTSyncViewerProps {
   generatedSlices: string[];
@@ -20,7 +21,6 @@ export function CTSyncViewer({
 
   const sizeOptions: (128 | 256 | 512)[] = [128, 256, 512];
 
-  // Memoize data URLs to prevent recreation on every render
   const generatedUrl = useMemo(
     () => getDataUrl(generatedSlices[currentSlice]),
     [generatedSlices, currentSlice]
@@ -31,7 +31,6 @@ export function CTSyncViewer({
     [hasOriginal, originalSlices, generatedSlices, currentSlice]
   );
 
-  // Wheel-based navigation
   const handleWheel = useCallback(
     (e: WheelEvent) => {
       e.preventDefault();
@@ -43,7 +42,6 @@ export function CTSyncViewer({
     [totalSlices]
   );
 
-  // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
@@ -65,7 +63,6 @@ export function CTSyncViewer({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [totalSlices]);
 
-  // Attach wheel listener
   useEffect(() => {
     const container = containerRef.current;
     if (container) {
@@ -74,14 +71,16 @@ export function CTSyncViewer({
     }
   }, [handleWheel]);
 
+  const sliceIndicator = CTSYNCVIEWER.sliceIndicator
+    .replace('{current}', String(currentSlice + 1))
+    .replace('{total}', String(totalSlices));
+
   return (
     <div className="flex flex-col items-center">
-      {/* Slice indicator */}
       <div className="text-slate-300 text-lg mb-4 font-mono">
-        Slice {currentSlice + 1} / {totalSlices}
+        {sliceIndicator}
       </div>
 
-      {/* Size selector buttons */}
       <div className="flex gap-2 mb-4">
         {sizeOptions.map((size) => (
           <button
@@ -93,28 +92,29 @@ export function CTSyncViewer({
                 : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
             }`}
           >
-            {size}x{size}
+            {sizeOptions.indexOf(size) === 0
+              ? CTSYNCVIEWER.sizeButtons[0]
+              : sizeOptions.indexOf(size) === 1
+              ? CTSYNCVIEWER.sizeButtons[1]
+              : CTSYNCVIEWER.sizeButtons[2]}
           </button>
         ))}
       </div>
 
-      {/* Resize notice */}
       {imageSize !== 128 && (
         <div className="text-amber-400 text-sm mb-2">
-          Display resized from 128x128
+          {CTSYNCVIEWER.resizeNotice}
         </div>
       )}
 
-      {/* Side-by-side CT viewers */}
       <div
         ref={containerRef}
         className="flex flex-col md:flex-row gap-8 cursor-pointer select-none p-4 bg-slate-800/50 rounded-lg"
         tabIndex={0}
       >
-        {/* Generated CT */}
         <div className="flex flex-col items-center">
           <span className="text-blue-400 mb-2 font-semibold text-sm">
-            Generated CT
+            {CTSYNCVIEWER.generatedCT}
           </span>
           <img
             src={generatedUrl}
@@ -126,11 +126,10 @@ export function CTSyncViewer({
           />
         </div>
 
-        {/* Original CT - only show if originalSlices provided */}
         {hasOriginal && (
           <div className="flex flex-col items-center">
             <span className="text-green-400 mb-2 font-semibold text-sm">
-              Original CT
+              {CTSYNCVIEWER.originalCT}
             </span>
             <img
               src={originalUrl}
@@ -144,7 +143,6 @@ export function CTSyncViewer({
         )}
       </div>
 
-      {/* Slice slider */}
       <div className="w-full max-w-md mt-6 px-4">
         <input
           type="range"
@@ -156,11 +154,10 @@ export function CTSyncViewer({
         />
       </div>
 
-      {/* Navigation hints */}
       <div className="flex gap-6 mt-4 text-slate-500 text-sm">
-        <span>Scroll or drag slider</span>
-        <span>Arrow keys for step-by-step</span>
-        <span>Home/End for first/last</span>
+        <span>{CTSYNCVIEWER.hintWheel}</span>
+        <span>{CTSYNCVIEWER.hintArrow}</span>
+        <span>{CTSYNCVIEWER.hintHomeEnd}</span>
       </div>
     </div>
   );

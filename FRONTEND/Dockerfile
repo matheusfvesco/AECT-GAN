@@ -1,9 +1,9 @@
 # ============================================================
 # AECT-GAN Frontend Dockerfile
-# Next.js application with Node.js 20
+# Next.js application with Node.js 24
 # ============================================================
 
-FROM node:20-alpine AS base
+FROM node:24-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
