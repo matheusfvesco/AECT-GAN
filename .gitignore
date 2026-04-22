@@ -5,7 +5,6 @@
 *.png
 *.html
 *.pdf
-*.pyc
 *.zip
 *__pycache__*
 *.log
@@ -23,3 +22,10 @@ PAPER_WEBSITE/3DGAN/
 /.local/
 /plots
 *.pkl
+*.next
+__pycache__/
+*.ipynb
+.ipynb_checkpoints/
+FRONTEND/node_modules/
+comparison_plots/
+.DS_Store
