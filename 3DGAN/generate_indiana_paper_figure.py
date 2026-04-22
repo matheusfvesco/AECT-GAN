@@ -494,18 +494,30 @@ def main():
             )
             ax.axis("off")
 
-    plt.savefig(
-        args.output if args.output else f"indiana_{args.patient_id}_figure.png",
-        dpi=300,
-        bbox_inches="tight",
-        pad_inches=0.03,
-    )
-    plt.close(fig)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    output_dir = os.path.join(script_dir, "comparison_plots")
+    os.makedirs(output_dir, exist_ok=True)
 
     output_file = (
         args.output if args.output else f"indiana_{args.patient_id}_figure.png"
     )
-    print(f"Figure saved to: {output_file}")
+    output_path = os.path.join(output_dir, output_file)
+
+    plt.savefig(
+        output_path.replace(".png", ".pdf"),
+        dpi=300,
+        bbox_inches="tight",
+        pad_inches=0.03,
+    )
+    plt.savefig(
+        output_path.replace(".png", ".svg"), bbox_inches="tight", pad_inches=0.03
+    )
+    plt.savefig(output_path, dpi=300, bbox_inches="tight", pad_inches=0.03)
+    plt.close(fig)
+
+    print(
+        f"Figures saved to: {output_path.replace('.png', '.pdf')}, {output_path.replace('.png', '.svg')}, {output_path}"
+    )
 
 
 if __name__ == "__main__":

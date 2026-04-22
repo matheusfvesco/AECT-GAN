@@ -16,7 +16,7 @@ python3 supplementary_visuals.py \
   --datasetfile=./data/test.txt \
   --resultdir=./save_models/multiView_CTGAN \
   --check_point=90 \
-  --how_many=50 \
+  --how_many=102 \
   --load_path=./save_models/multiView_CTGAN/data/chengsq/AECT-GAN/model_dic/MultiView-AECT-GAN/d2_multiview2500/checkpoint
 
 ## synthetic
@@ -34,7 +34,7 @@ python3 supplementary_visuals.py \
   --datasetfile=./data/synthetic_test.txt \
   --resultdir=./save_models/multiView_CTGAN \
   --check_point=90 \
-  --how_many=50 \
+  --how_many=222 \
   --load_path=./save_models/multiView_CTGAN/data/chengsq/AECT-GAN/model_dic/MultiView-AECT-GAN/multiview-GAN-dataset-complete-clipped-shifted/checkpoint
 
 ## real
@@ -52,7 +52,7 @@ python3 supplementary_visuals.py \
   --datasetfile=./data/real_test.txt \
   --resultdir=./save_models/multiView_CTGAN \
   --check_point=90 \
-  --how_many=50 \
+  --how_many=20 \
   --load_path=./save_models/multiView_CTGAN/data/chengsq/AECT-GAN/model_dic/MultiView-AECT-GAN/multiview-GAN-dataset-complete-clipped-shifted-real/checkpoint
 
 ## mixed
@@ -70,7 +70,7 @@ python3 supplementary_visuals.py \
   --datasetfile=./data/mixed_test.txt \
   --resultdir=./save_models/multiView_CTGAN \
   --check_point=90 \
-  --how_many=50 \
+  --how_many=222 \
   --load_path=./save_models/multiView_CTGAN/data/chengsq/AECT-GAN/model_dic/MultiView-AECT-GAN/multiview-GAN-dataset-complete-clipped-shifted-real_mixed/checkpoint
 
 # Test each model on the real subset of the test set
