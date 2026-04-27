@@ -340,7 +340,7 @@ def main():
     print(f"Processing patient {args.patient_id}...")
 
     if args.original:
-        results_subplot1 = {}
+        results = {}
         for model_variant, label in MODEL_VARIANTS_ORIGINAL:
             print(f"  Running inference with {model_variant} ({label})...")
             result = run_inference_single(
@@ -349,31 +349,26 @@ def main():
                 data=sample,
                 opt=opt,
             )
-            results_subplot1[model_variant] = result
+            results[model_variant] = result
 
         print(f"Loading original sample from LIDC-HDF5-256...")
         original_sample, matched_patient_id = load_original_sample(args.patient_id, opt)
 
-        results_subplot2 = {}
-        cheng_variant = ("d2_multiview2500", "Cheng et al.")
+        cheng_variant = "d2_multiview2500"
         print(
-            f"  Running inference with {cheng_variant[0]} ({cheng_variant[1]}) on original data..."
+            f"  Running inference with {cheng_variant} (Cheng et al.) on original data..."
         )
-        result = run_inference_single(
-            model_variant=cheng_variant[0],
+        result_cheng = run_inference_single(
+            model_variant=cheng_variant,
             model_root=args.model_root,
             data=original_sample,
             opt=opt,
         )
-        results_subplot2[cheng_variant[0]] = result
+        results[cheng_variant] = result_cheng
 
-        xray1_sub1 = results_subplot1[MODEL_VARIANTS_ORIGINAL[0][0]]["xray1"]
-        xray2_sub1 = results_subplot1[MODEL_VARIANTS_ORIGINAL[0][0]]["xray2"]
-        gt_ct_sub1 = results_subplot1[MODEL_VARIANTS_ORIGINAL[0][0]]["gt"]
-
-        xray1_sub2 = results_subplot2["d2_multiview2500"]["xray1"]
-        xray2_sub2 = results_subplot2["d2_multiview2500"]["xray2"]
-        gt_ct_sub2 = results_subplot2["d2_multiview2500"]["gt"]
+        xray1 = results[MODEL_VARIANTS_ORIGINAL[0][0]]["xray1"]
+        xray2 = results[MODEL_VARIANTS_ORIGINAL[0][0]]["xray2"]
+        gt_ct = results[MODEL_VARIANTS_ORIGINAL[0][0]]["gt"]
 
         middle_start = SKIP_TOP_BOTTOM
         middle_end = CT_DEPTH - SKIP_TOP_BOTTOM
@@ -381,159 +376,83 @@ def main():
         slice_indices = list(range(middle_start, middle_end, slice_step))
         slice_indices = slice_indices[: args.num_slices]
 
-        num_cols_sub1 = 5
-        num_cols_sub2 = 3
-
-        fig_width = 10.5
+        fig_width = 8.5
         fig_height = 2.0 + args.num_slices * 1.25
         fig = plt.figure(figsize=(fig_width, fig_height))
 
         gs = gridspec.GridSpec(
             nrows=args.num_slices + 1,
-            ncols=9,
+            ncols=6,
             height_ratios=[0.6] + [1.0] * args.num_slices,
-            width_ratios=[1, 1, 1, 1, 1, 0.3, 1, 1, 1],
+            width_ratios=[1, 1, 1, 1, 1, 1],
             hspace=0.05,
             wspace=0.05,
             top=0.98,
             bottom=0.02,
-            left=0.01,
-            right=0.99,
+            left=0.03,
+            right=0.97,
         )
 
-        gs1 = gridspec.GridSpecFromSubplotSpec(
-            nrows=args.num_slices + 1,
-            ncols=num_cols_sub1,
-            height_ratios=[0.6] + [1.0] * args.num_slices,
-            width_ratios=[1, 1, 1, 1, 1],
-            hspace=0.05,
-            wspace=0.05,
-            subplot_spec=gs[:, :5],
-        )
-
-        gs2 = gridspec.GridSpecFromSubplotSpec(
-            nrows=args.num_slices + 1,
-            ncols=num_cols_sub2,
-            height_ratios=[0.6] + [1.0] * args.num_slices,
-            width_ratios=[1, 1, 1],
-            hspace=0.05,
-            wspace=0.05,
-            subplot_spec=gs[:, 6:9],
-        )
-
-        ax_title1 = fig.add_subplot(gs[0, :5])
-        ax_title1.text(
-            0.5,
-            1.5,
-            "Our dataset",
-            ha="center",
-            va="center",
-            fontsize=11,
-            fontweight="bold",
-        )
-        ax_title1.axis("off")
-
-        ax_title2 = fig.add_subplot(gs[0, 6:9])
-        ax_title2.text(
-            0.5,
-            1.5,
-            "Ying et al. dataset",
-            ha="center",
-            va="center",
-            fontsize=11,
-            fontweight="bold",
-        )
-        ax_title2.axis("off")
-        ax_title2.axis("off")
-
-        ax_line = fig.add_subplot(gs[1:, 5])
-        ax_line.axvline(x=0.5, color="black", linewidth=2)
-        ax_line.axis("off")
-
-        col_labels_sub1 = [
+        col_labels = [
             "Input\nX-Rays",
             "Ground\nTruth",
+            "Cheng et al.",
             "Synthetic",
             "Real",
             "Mixed",
         ]
-        for col_idx, label in enumerate(col_labels_sub1):
-            ax_header = fig.add_subplot(gs1[0, col_idx])
+        for col_idx, label in enumerate(col_labels):
+            ax_header = fig.add_subplot(gs[0, col_idx])
             ax_header.text(
                 0.5, 0.5, label, ha="center", va="center", fontsize=9, fontweight="bold"
             )
             ax_header.axis("off")
 
-        col_labels_sub2 = [
-            "Input\nX-Rays",
-            "Ground\nTruth",
-            "Cheng et al.",
-        ]
-        for col_idx, label in enumerate(col_labels_sub2):
-            ax_header = fig.add_subplot(gs2[0, col_idx])
-            ax_header.text(
-                0.5, 0.5, label, ha="center", va="center", fontsize=9, fontweight="bold"
-            )
-            ax_header.axis("off")
-
-        xray1_np = (
-            xray1_sub1.squeeze().astype(np.float32)
-            if xray1_sub1.ndim > 2
-            else xray1_sub1
-        )
-        xray2_np = (
-            xray2_sub1.squeeze().astype(np.float32)
-            if xray2_sub1.ndim > 2
-            else xray2_sub1
-        )
-        xray_combined_sub1 = np.vstack([xray1_np, xray2_np])
-        ax_xrays_sub1 = fig.add_subplot(gs1[1:, 0])
-        ax_xrays_sub1.imshow(xray_combined_sub1, cmap="gray", interpolation="nearest")
-        ax_xrays_sub1.axis("off")
-
-        xray1_np_sub2 = (
-            xray1_sub2.squeeze().astype(np.float32)
-            if xray1_sub2.ndim > 2
-            else xray1_sub2
-        )
-        xray2_np_sub2 = (
-            xray2_sub2.squeeze().astype(np.float32)
-            if xray2_sub2.ndim > 2
-            else xray2_sub2
-        )
-        xray_combined_sub2 = np.vstack([xray1_np_sub2, xray2_np_sub2])
-        ax_xrays_sub2 = fig.add_subplot(gs2[1:, 0])
-        ax_xrays_sub2.imshow(xray_combined_sub2, cmap="gray", interpolation="nearest")
-        ax_xrays_sub2.axis("off")
+        xray1_np = xray1.squeeze().astype(np.float32) if xray1.ndim > 2 else xray1
+        xray2_np = xray2.squeeze().astype(np.float32) if xray2.ndim > 2 else xray2
+        xray_combined = np.vstack([xray1_np, xray2_np])
+        ax_xrays = fig.add_subplot(gs[1:, 0])
+        ax_xrays.imshow(xray_combined, cmap="gray", interpolation="nearest")
+        ax_xrays.axis("off")
 
         all_min = float("inf")
         all_max = float("-inf")
         for model_variant, _ in MODEL_VARIANTS_ORIGINAL:
-            fake = results_subplot1[model_variant]["fake"]
+            fake = results[model_variant]["fake"]
             for idx in slice_indices:
                 slice_data = fake[idx]
                 all_min = min(all_min, np.nanmin(slice_data))
                 all_max = max(all_max, np.nanmax(slice_data))
-        fake_sub2 = results_subplot2["d2_multiview2500"]["fake"]
+        fake_cheng = results["d2_multiview2500"]["fake"]
         for idx in slice_indices:
-            slice_data = fake_sub2[idx]
+            slice_data = fake_cheng[idx]
             all_min = min(all_min, np.nanmin(slice_data))
             all_max = max(all_max, np.nanmax(slice_data))
 
         for row_idx, slice_idx in enumerate(slice_indices):
-            ax_gt_sub1 = fig.add_subplot(gs1[row_idx + 1, 1])
-            ax_gt_sub1.imshow(
-                gt_ct_sub1[slice_idx],
+            ax_gt = fig.add_subplot(gs[row_idx + 1, 1])
+            ax_gt.imshow(
+                gt_ct[slice_idx],
                 cmap="gray",
                 vmin=all_min,
                 vmax=all_max,
                 interpolation="nearest",
             )
-            ax_gt_sub1.axis("off")
+            ax_gt.axis("off")
+
+            ax_cheng = fig.add_subplot(gs[row_idx + 1, 2])
+            ax_cheng.imshow(
+                fake_cheng[slice_idx],
+                cmap="gray",
+                vmin=all_min,
+                vmax=all_max,
+                interpolation="nearest",
+            )
+            ax_cheng.axis("off")
 
             for col_idx, (model_variant, label) in enumerate(MODEL_VARIANTS_ORIGINAL):
-                ax = fig.add_subplot(gs1[row_idx + 1, col_idx + 2])
-                fake = results_subplot1[model_variant]["fake"]
+                ax = fig.add_subplot(gs[row_idx + 1, col_idx + 3])
+                fake = results[model_variant]["fake"]
                 ax.imshow(
                     fake[slice_idx],
                     cmap="gray",
@@ -542,26 +461,6 @@ def main():
                     interpolation="nearest",
                 )
                 ax.axis("off")
-
-            ax_gt_sub2 = fig.add_subplot(gs2[row_idx + 1, 1])
-            ax_gt_sub2.imshow(
-                gt_ct_sub2[slice_idx],
-                cmap="gray",
-                vmin=all_min,
-                vmax=all_max,
-                interpolation="nearest",
-            )
-            ax_gt_sub2.axis("off")
-
-            ax_cheng = fig.add_subplot(gs2[row_idx + 1, 2])
-            ax_cheng.imshow(
-                fake_sub2[slice_idx],
-                cmap="gray",
-                vmin=all_min,
-                vmax=all_max,
-                interpolation="nearest",
-            )
-            ax_cheng.axis("off")
 
         output_file = (
             args.output if args.output else f"{args.tag}_{args.patient_id}_figure.png"
