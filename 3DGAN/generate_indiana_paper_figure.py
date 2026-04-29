@@ -440,8 +440,8 @@ def main():
     slice_indices = list(range(middle_start, middle_end, slice_step))
     slice_indices = slice_indices[: args.num_slices]
 
-    fig_width = 7.0
-    fig_height = 2.0 + args.num_slices * 1.25
+    fig_width = 14.0
+    fig_height = 4.0 + args.num_slices * 2.5
     fig = plt.figure(figsize=(fig_width, fig_height))
 
     gs = gridspec.GridSpec(
@@ -457,12 +457,10 @@ def main():
         right=0.97,
     )
 
-    col_labels = ["Input\nX-Rays", "Cheng et al.", "Synthetic", "Real", "Mixed"]
+    col_labels = ["Input\nX-Rays", "Cheng\net al.", "Synthetic", "Real", "Mixed"]
     for col_idx, label in enumerate(col_labels):
         ax_header = fig.add_subplot(gs[0, col_idx])
-        ax_header.text(
-            0.5, 0.5, label, ha="center", va="center", fontsize=10, fontweight="bold"
-        )
+        ax_header.text(0.5, 0.5, label, ha="center", va="center", fontsize=40)
         ax_header.axis("off")
 
     xray_combined = np.vstack(
