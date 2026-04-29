@@ -1,0 +1,67 @@
+# ============================================================
+# AECT Docker Compose - CPU Only (No GPU Required)
+# ============================================================
+
+services:
+  api:
+    build:
+      context: ./API
+      dockerfile: Dockerfile
+    container_name: aect-api-cpu
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./API/weights:/app/weights:ro
+      - type: tmpfs
+        target: /app/uploads
+        tmpfs:
+          size: 1024M
+    # Removed NVIDIA GPU reservations
+    shm_size: '2gb'
+    ulimits:
+      memlock: -1
+      stack: 67108864
+    environment:
+      - CUDA_VISIBLE_DEVICES=-1
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  frontend:
+    build:
+      context: ./FRONTEND
+      dockerfile: Dockerfile
+      target: runner
+      args:
+        - NEXT_PUBLIC_API_URL=http://localhost:8001
+    container_name: aect-frontend
+    ports:
+      - "3005:3000"
+    environment:
+      - NODE_ENV=production
+      - API_URL=http://api:8001
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: always
+
+  paper-website:
+    build:
+      context: ./PAPER_WEBSITE
+      dockerfile: Dockerfile
+      target: runner
+    container_name: aect-paper-website
+    ports:
+      - "3001:3000"
+    environment:
+      - NODE_ENV=production
+    restart: always
+
+networks:
+  default:
+    name: aect-network-cpu
+    driver: bridge
