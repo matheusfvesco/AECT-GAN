@@ -38,15 +38,24 @@ from lib.dataset.factory import get_dataset
 MODEL_VARIANTS = [
     ("d2_multiview2500", "Cheng\net al."),
     ("multiview-GAN-dataset-complete-clipped-shifted", "Synthetic"),
-    ("multiview-GAN-dataset-complete-clipped-shifted-real", "Real"),
     ("multiview-GAN-dataset-complete-clipped-shifted-real_mixed", "Mixed"),
 ]
 
 MODEL_VARIANTS_ORIGINAL = [
     ("multiview-GAN-dataset-complete-clipped-shifted", "Synthetic"),
-    ("multiview-GAN-dataset-complete-clipped-shifted-real", "Real"),
     ("multiview-GAN-dataset-complete-clipped-shifted-real_mixed", "Mixed"),
 ]
+
+
+# Layout configuration
+BASE_COLS_WITH_GT = 2  # Input X-rays + Ground Truth
+CHENG_COL = 1   # Cheng column in --original mode
+ORIGINAL_NCOLS = 6
+ORIGINAL_FIG_WIDTH = 17.0
+
+
+def calc_fig_width(ncols):
+    return ORIGINAL_FIG_WIDTH * ncols / ORIGINAL_NCOLS
 
 
 def extract_patient_base_id(patient_str):
@@ -376,15 +385,16 @@ def main():
         slice_indices = list(range(middle_start, middle_end, slice_step))
         slice_indices = slice_indices[: args.num_slices]
 
-        fig_width = 17.0
+        ncols = BASE_COLS_WITH_GT + len(MODEL_VARIANTS_ORIGINAL) + CHENG_COL
+        fig_width = calc_fig_width(ncols)
         fig_height = 4.0 + args.num_slices * 2.5
         fig = plt.figure(figsize=(fig_width, fig_height))
 
         gs = gridspec.GridSpec(
             nrows=args.num_slices + 1,
-            ncols=6,
+            ncols=ncols,
             height_ratios=[0.6] + [1.0] * args.num_slices,
-            width_ratios=[1, 1, 1, 1, 1, 1],
+            width_ratios=[1] * ncols,
             hspace=0.05,
             wspace=0.05,
             top=0.98,
@@ -393,14 +403,7 @@ def main():
             right=0.97,
         )
 
-        col_labels = [
-            "Input\nX-Rays",
-            "Ground\nTruth",
-            "Cheng\net al.",
-            "Synthetic",
-            "Real",
-            "Mixed",
-        ]
+        col_labels = ["Input\nX-Rays", "Ground\nTruth", "Cheng\net al."] + [label for _, label in MODEL_VARIANTS_ORIGINAL]
         for col_idx, label in enumerate(col_labels):
             ax_header = fig.add_subplot(gs[0, col_idx])
             ax_header.text(
@@ -509,15 +512,16 @@ def main():
         slice_indices = list(range(middle_start, middle_end, slice_step))
         slice_indices = slice_indices[: args.num_slices]
 
-        fig_width = 17.0
+        ncols = BASE_COLS_WITH_GT + len(MODEL_VARIANTS)
+        fig_width = calc_fig_width(ncols)
         fig_height = 4.0 + args.num_slices * 2.5
         fig = plt.figure(figsize=(fig_width, fig_height))
 
         gs = gridspec.GridSpec(
             nrows=args.num_slices + 1,
-            ncols=6,
+            ncols=ncols,
             height_ratios=[0.6] + [1.0] * args.num_slices,
-            width_ratios=[1, 1, 1, 1, 1, 1],
+            width_ratios=[1] * ncols,
             hspace=0.05,
             wspace=0.05,
             top=0.98,
@@ -526,14 +530,7 @@ def main():
             right=0.97,
         )
 
-        col_labels = [
-            "Input\nX-Rays",
-            "Ground\nTruth",
-            "Cheng\net al.",
-            "Synthetic",
-            "Real",
-            "Mixed",
-        ]
+        col_labels = ["Input\nX-Rays", "Ground\nTruth"] + [label for _, label in MODEL_VARIANTS]
         for col_idx, label in enumerate(col_labels):
             ax_header = fig.add_subplot(gs[0, col_idx])
             ax_header.text(

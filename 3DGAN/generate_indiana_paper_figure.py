@@ -41,9 +41,18 @@ from lib.xray_classifier import classify_xray_view, _preprocess_array
 MODEL_VARIANTS = [
     ("d2_multiview2500", "Cheng et al."),
     ("multiview-GAN-dataset-complete-clipped-shifted", "Synthetic"),
-    ("multiview-GAN-dataset-complete-clipped-shifted-real", "Real"),
     ("multiview-GAN-dataset-complete-clipped-shifted-real_mixed", "Mixed"),
 ]
+
+# Layout configuration
+BASE_COLS = 1  # Input X-rays only
+ORIGINAL_NCOLS = 5
+ORIGINAL_FIG_WIDTH = 14.0
+
+
+def calc_fig_width(ncols):
+    return ORIGINAL_FIG_WIDTH * ncols / ORIGINAL_NCOLS
+
 
 CT_DEPTH = 128
 MIDDLE_SLICES = 80
@@ -440,15 +449,16 @@ def main():
     slice_indices = list(range(middle_start, middle_end, slice_step))
     slice_indices = slice_indices[: args.num_slices]
 
-    fig_width = 14.0
+    ncols = BASE_COLS + len(MODEL_VARIANTS)
+    fig_width = calc_fig_width(ncols)
     fig_height = 4.0 + args.num_slices * 2.5
     fig = plt.figure(figsize=(fig_width, fig_height))
 
     gs = gridspec.GridSpec(
         nrows=args.num_slices + 1,
-        ncols=5,
+        ncols=ncols,
         height_ratios=[0.6] + [1.0] * args.num_slices,
-        width_ratios=[1, 1, 1, 1, 1],
+        width_ratios=[1] * ncols,
         hspace=0.05,
         wspace=0.05,
         top=0.98,
@@ -457,7 +467,7 @@ def main():
         right=0.97,
     )
 
-    col_labels = ["Input\nX-Rays", "Cheng\net al.", "Synthetic", "Real", "Mixed"]
+    col_labels = ["Input\nX-Rays"] + [label for _, label in MODEL_VARIANTS]
     for col_idx, label in enumerate(col_labels):
         ax_header = fig.add_subplot(gs[0, col_idx])
         ax_header.text(0.5, 0.5, label, ha="center", va="center", fontsize=40)
