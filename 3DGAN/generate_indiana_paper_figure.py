@@ -39,9 +39,9 @@ from lib.xray_classifier import classify_xray_view, _preprocess_array
 
 
 MODEL_VARIANTS = [
-    ("d2_multiview2500", "Cheng et al."),
-    ("multiview-GAN-dataset-complete-clipped-shifted", "Synthetic"),
-    ("multiview-GAN-dataset-complete-clipped-shifted-real_mixed", "Mixed"),
+    ("d2_multiview2500", "Model C"),
+    ("multiview-GAN-dataset-complete-clipped-shifted", "Model E"),
+    ("multiview-GAN-dataset-complete-clipped-shifted-real_mixed", "Model M"),
 ]
 
 # Layout configuration

@@ -25,6 +25,7 @@ import numpy as np
 import os
 from lib.model.lpips import PerceptualLoss
 from scipy.stats import shapiro, ttest_1samp
+import scipy.stats as st
 from pathlib import Path
 import h5py
 
@@ -219,6 +220,7 @@ def evaluate(args):
 
     # ssim3d_loss = SSIM3D(window_size = 11)
     avg_dict = dict()
+    sample_results = []
     percept = PerceptualLoss(model="net-lin", net="vgg", use_gpu=True)
     for epoch_i, data in tqdm.tqdm(enumerate(dataloader)):
         gan_model.set_input(data)
@@ -315,11 +317,14 @@ def evaluate(args):
             ("LPIPS-avg", lpips[3]),
         ]
 
+        sample_dict = {"sample_name": name, "patient_id": name2}
         for key, value in metrics_list:
             if avg_dict.get(key) is None:
                 avg_dict[key] = [] + value.tolist()
             else:
                 avg_dict[key].extend(value.tolist())
+            sample_dict[key] = value[0] if isinstance(value, np.ndarray) else value
+        sample_results.append(sample_dict)
 
         # Save generated and ground-truth CT, and input xrays for this sample as an .h5 file
         try:
@@ -368,13 +373,28 @@ def evaluate(args):
     psnr_last = []
     ssim_last = []
     lpips_last = []
-    metrics_lines = []
+    metrics_lines = ["Metric\tTotal\tMean\tStdDev\tCI_95_Margin"]
     for key, value in avg_dict.items():
         total = len(value)
+        
+        # 1. Mean
         avg_val = np.round(np.mean(value), 7)
-        line = "### --{}-- total: {}; avg: {} ".format(key, total, avg_val)
-        print(line)
-        metrics_lines.append(line)
+        
+        # 2. Robust Sample Standard Deviation (ddof=1)
+        std_val = np.round(np.std(value, ddof=1), 7) if total > 1 else 0.0
+        
+        # 3. 95% Confidence Interval (using t-distribution)
+        se = np.std(value, ddof=1) / np.sqrt(total) if total > 1 else 0.0
+        t_stat = st.t.ppf(0.975, total - 1) if total > 1 else 0.0
+        ci_margin = np.round(t_stat * se, 7)
+        
+        # Console Output (Human Readable)
+        print("### --{}-- total: {}; avg: {} ± {} (95% CI: ± {})".format(key, total, avg_val, std_val, ci_margin))
+        
+        # TSV Output
+        tsv_line = "{}\t{}\t{}\t{}\t{}".format(key, total, avg_val, std_val, ci_margin)
+        metrics_lines.append(tsv_line)
+
         if (key == "PSNR-TS") or (key == "PSNR-CS") or (key == "PSNR-SS"):
             psnr_last.append(np.mean(value))
         if (key == "SSIM-TS") or (key == "SSIM-CS") or (key == "SSIM-SS"):
@@ -383,9 +403,19 @@ def evaluate(args):
             lpips_last.append(np.mean(value))
         avg_dict[key] = np.mean(value)
 
-    print("### --PSNR_std--  std: {} ".format(np.round(np.std(psnr_last), 7)))
-    print("### --SSIM_std--  std: {} ".format(np.round(np.std(ssim_last), 7)))
-    print("### --LPIPS_std--  std: {} ".format(np.round(np.std(lpips_last), 7)))
+    psnr_std_val = np.round(np.std(psnr_last), 7)
+    ssim_std_val = np.round(np.std(ssim_last), 7)
+    lpips_std_val = np.round(np.std(lpips_last), 7)
+
+    print("### --PSNR_cross_view_std--  std: {} ".format(psnr_std_val))
+    print("### --SSIM_cross_view_std--  std: {} ".format(ssim_std_val))
+    print("### --LPIPS_cross_view_std--  std: {} ".format(lpips_std_val))
+
+    metrics_lines.extend([
+        "PSNR_cross_view_std\t3\tN/A\t{}\tN/A".format(psnr_std_val),
+        "SSIM_cross_view_std\t3\tN/A\t{}\tN/A".format(ssim_std_val),
+        "LPIPS_cross_view_std\t3\tN/A\t{}\tN/A".format(lpips_std_val)
+    ])
 
     try:
         out_dir = (
@@ -396,12 +426,19 @@ def evaluate(args):
             / opt.tag
         )
         out_dir.mkdir(parents=True, exist_ok=True)
-        metrics_path = out_dir / "metrics.txt"
+        metrics_path = out_dir / "metrics.tsv"
         with metrics_path.open("w") as mf:
             for line_text in metrics_lines:
                 mf.write(line_text + "\n")
+
+        # Save individual sample results
+        sample_results_path = out_dir / "sample_results.tsv"
+        import pandas as pd
+        pd.DataFrame(sample_results).to_csv(sample_results_path, sep="\t", index=False)
+        print("Saved sample results to {}".format(sample_results_path))
+
     except Exception as e:
-        print("Failed to write metrics file: {}".format(e))
+        print("Failed to write metrics files: {}".format(e))
 
     return avg_dict
 

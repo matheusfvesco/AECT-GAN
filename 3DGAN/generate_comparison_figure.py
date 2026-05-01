@@ -36,14 +36,14 @@ from lib.dataset.factory import get_dataset
 
 
 MODEL_VARIANTS = [
-    ("d2_multiview2500", "Cheng\net al."),
-    ("multiview-GAN-dataset-complete-clipped-shifted", "Synthetic"),
-    ("multiview-GAN-dataset-complete-clipped-shifted-real_mixed", "Mixed"),
+    ("d2_multiview2500", "Model C"),
+    ("multiview-GAN-dataset-complete-clipped-shifted", "Model E"),
+    ("multiview-GAN-dataset-complete-clipped-shifted-real_mixed", "Model M"),
 ]
 
 MODEL_VARIANTS_ORIGINAL = [
-    ("multiview-GAN-dataset-complete-clipped-shifted", "Synthetic"),
-    ("multiview-GAN-dataset-complete-clipped-shifted-real_mixed", "Mixed"),
+    ("multiview-GAN-dataset-complete-clipped-shifted", "Model E"),
+    ("multiview-GAN-dataset-complete-clipped-shifted-real_mixed", "Model M"),
 ]
 
 
@@ -403,7 +403,7 @@ def main():
             right=0.97,
         )
 
-        col_labels = ["Input\nX-Rays", "Ground\nTruth", "Cheng\net al."] + [label for _, label in MODEL_VARIANTS_ORIGINAL]
+        col_labels = ["Input\nX-Rays", "Ground\nTruth", MODEL_VARIANTS[0][1]] + [label for _, label in MODEL_VARIANTS_ORIGINAL]
         for col_idx, label in enumerate(col_labels):
             ax_header = fig.add_subplot(gs[0, col_idx])
             ax_header.text(
