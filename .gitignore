@@ -9,7 +9,8 @@
 *__pycache__*
 *.log
 *.csv
-*.json
+*.tsv
+*.svg
 *.xml
 *.env
 *.txt
