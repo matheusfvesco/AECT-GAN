@@ -43,10 +43,9 @@ from lib.xray_classifier import classify_xray_view, _preprocess_array
 
 # Model variants to iterate over (same as comparison_visuals.py)
 MODEL_VARIANTS = [
-    ("d2_multiview2500", "Original"),
-    ("multiview-GAN-dataset-complete-clipped-shifted", "Synthetic"),
-    ("multiview-GAN-dataset-complete-clipped-shifted-real", "Real"),
-    ("multiview-GAN-dataset-complete-clipped-shifted-real_mixed", "Mixed"),
+    ("d2_multiview2500", "Model C"),
+    ("multiview-GAN-dataset-complete-clipped-shifted", "Model E"),
+    ("multiview-GAN-dataset-complete-clipped-shifted-real_mixed", "Model M"),
 ]
 
 
@@ -493,12 +492,12 @@ def create_pdf_visualization(samples, output_path, checkpoint_num):
                 ax_x2.text(0.5, 0.5, "No Lateral X-Ray", ha="center", va="center")
                 ax_x2.axis("off")
 
-            # CT slices: each row has 4 columns [Original | Synthetic | Real | Mixed]
+            # CT slices: each row has 3 columns [Model C | Model E | Model M]
             gs_ct = fig.add_gridspec(
                 nrows=n_slices,
-                ncols=4,
+                ncols=3,
                 height_ratios=[1.0] * n_slices,
-                width_ratios=[1, 1, 1, 1],
+                width_ratios=[1, 1, 1],
                 hspace=0.15,
                 wspace=0.05,
                 top=0.85,
@@ -668,7 +667,6 @@ def create_html_visualization(samples, output_dir, checkpoint_num):
         .col-header {{ font-weight: bold; margin-bottom: 10px; padding: 5px 10px; border-radius: 4px; }}
         .header-original {{ background-color: #e8f5e9; }}
         .header-synthetic {{ background-color: #fff3e0; }}
-        .header-real {{ background-color: #f3e5f5; }}
         .header-mixed {{ background-color: #e0f7fa; }}
         .metadata {{ color: #777; font-size: 14px; margin-top: 20px; }}
     </style>
@@ -891,9 +889,8 @@ def generate_visualizations(args):
         print("No samples generated. Exiting.")
         return []
 
-    # Create comparison_plots directory
-    output_dir = script_dir / "comparison_plots"
-    output_dir.mkdir(parents=True, exist_ok=True)
+    # Set output_dir to result_dir to follow the supplementary structure
+    output_dir = result_dir
 
     # Create PDF
     print("Creating PDF visualization...")
@@ -901,95 +898,7 @@ def generate_visualizations(args):
     create_pdf_visualization(samples, pdf_path, checkpoint_num)
     print(f"PDF saved to: {pdf_path}")
 
-    # Group samples by patient name
-    grouped = OrderedDict()
-    for sample in samples:
-        name = sample["name"]
-        if name not in grouped:
-            grouped[name] = []
-        grouped[name].append(sample)
 
-    # Create PNG and SVG (need to recreate PDF pages as separate figures)
-    print("Creating PNG and SVG visualizations...")
-    png_svg_path = output_dir / f"indiana_comparison_visuals_{checkpoint_num}"
-
-    for name, variant_samples in tqdm(grouped.items(), desc="Creating PNG/SVG pages"):
-        by_variant = {s["model_variant"]: s for s in variant_samples}
-        frontal = variant_samples[0]["frontal"]
-        lateral = variant_samples[0].get("lateral")
-        note = variant_samples[0].get("note")
-        fake_cts = {k: v["fake"] for k, v in by_variant.items()}
-
-        step = 10
-        depth = list(fake_cts.values())[0].shape[0]
-        slice_indices = list(range(0, depth, step))
-        if len(slice_indices) == 0:
-            slice_indices = [depth // 2]
-        if len(slice_indices) > 15:
-            slice_indices = slice_indices[:15]
-
-        n_slices = len(slice_indices)
-        fig = plt.figure(figsize=(12, 3 + n_slices * 1.5))
-        gs = plt.GridSpec(
-            n_slices + 1,
-            4,
-            height_ratios=[1.0] + [1.0] * n_slices,
-            hspace=0.05,
-            wspace=0.05,
-            top=0.98,
-            bottom=0.02,
-            left=0.02,
-            right=0.98,
-        )
-
-        ax_frontal = fig.add_subplot(gs[0, 0])
-        ax_frontal.imshow(frontal, cmap="gray")
-        ax_frontal.set_title("Frontal X-Ray", fontsize=9)
-        ax_frontal.axis("off")
-
-        if lateral is not None:
-            ax_lateral = fig.add_subplot(gs[0, 1])
-            ax_lateral.imshow(lateral, cmap="gray")
-            ax_lateral.set_title("Lateral X-Ray", fontsize=9)
-            ax_lateral.axis("off")
-
-        variant_cols = MODEL_VARIANTS
-        if lateral is None:
-            variant_cols = MODEL_VARIANTS[:3]
-
-        for row_idx, slice_idx in enumerate(slice_indices):
-            all_min = float("inf")
-            all_max = float("-inf")
-            variant_slices = {}
-            for variant_key, _ in MODEL_VARIANTS:
-                if variant_key in fake_cts:
-                    fake_slice = fake_cts[variant_key][slice_idx]
-                    variant_slices[variant_key] = fake_slice
-                    all_min = min(all_min, np.nanmin(fake_slice))
-                    all_max = max(all_max, np.nanmax(fake_slice))
-
-            for col_idx, (variant_key, label) in enumerate(variant_cols):
-                ax_var = fig.add_subplot(gs[row_idx + 1, col_idx])
-                if variant_key in variant_slices:
-                    ax_var.imshow(
-                        variant_slices[variant_key],
-                        cmap="gray",
-                        vmin=all_min,
-                        vmax=all_max,
-                        interpolation="nearest",
-                    )
-                    if row_idx == 0:
-                        ax_var.set_title(f"{label}", fontsize=9)
-                else:
-                    ax_var.text(0.5, 0.5, "N/A", ha="center", va="center")
-                ax_var.axis("off")
-
-        patient_name = name.replace("/", "_").replace(" ", "_")
-        fig.savefig(
-            str(png_svg_path) + f"_{patient_name}.png", dpi=100, bbox_inches="tight"
-        )
-        fig.savefig(str(png_svg_path) + f"_{patient_name}.svg", bbox_inches="tight")
-        plt.close(fig)
 
     # Create HTML per patient
     print("Creating HTML visualizations per patient...")

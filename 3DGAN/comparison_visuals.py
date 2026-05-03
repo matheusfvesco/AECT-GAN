@@ -145,10 +145,9 @@ def create_pdf_visualization(samples, output_path, checkpoint_num):
 
     # Define column order and labels
     VARIANT_COLS = [
-        ("d2_multiview2500", "Original"),
-        ("multiview-GAN-dataset-complete-clipped-shifted", "Synthetic"),
-        ("multiview-GAN-dataset-complete-clipped-shifted-real", "Real"),
-        ("multiview-GAN-dataset-complete-clipped-shifted-real_mixed", "Mixed"),
+        ("d2_multiview2500", "Model C"),
+        ("multiview-GAN-dataset-complete-clipped-shifted", "Model E"),
+        ("multiview-GAN-dataset-complete-clipped-shifted-real_mixed", "Model M"),
     ]
 
     with PdfPages(str(output_path)) as pdf:
@@ -210,11 +209,11 @@ def create_pdf_visualization(samples, output_path, checkpoint_num):
                 ax_x2.text(0.5, 0.5, "No Lateral X-Ray", ha='center', va='center')
                 ax_x2.axis('off')
 
-            # CT slices: each row has 5 columns [GT | d2 | synthetic | real | mixed]
+            # CT slices: each row has 4 columns [GT | d2 | synthetic | mixed]
             gs_ct = fig.add_gridspec(
-                nrows=n_slices, ncols=5,
+                nrows=n_slices, ncols=4,
                 height_ratios=[1.0] * n_slices,
-                width_ratios=[1, 1, 1, 1, 1],
+                width_ratios=[1, 1, 1, 1],
                 hspace=0.15, wspace=0.05,
                 top=0.85, bottom=0.02, left=0.02, right=0.98
             )
@@ -279,10 +278,9 @@ def create_html_visualization(samples, output_dir, checkpoint_num):
 
     # Define column order and labels
     VARIANT_COLS = [
-        ("d2_multiview2500", "Original"),
-        ("multiview-GAN-dataset-complete-clipped-shifted", "Synthetic"),
-        ("multiview-GAN-dataset-complete-clipped-shifted-real", "Real"),
-        ("multiview-GAN-dataset-complete-clipped-shifted-real_mixed", "Mixed"),
+        ("d2_multiview2500", "Model C"),
+        ("multiview-GAN-dataset-complete-clipped-shifted", "Model E"),
+        ("multiview-GAN-dataset-complete-clipped-shifted-real_mixed", "Model M"),
     ]
 
     # Create subdirectory for each patient
@@ -403,7 +401,6 @@ def create_html_visualization(samples, output_dir, checkpoint_num):
         .header-gt {{ background-color: #e8f5e9; }}
         .header-d2 {{ background-color: #e3f2fd; }}
         .header-synth {{ background-color: #fff3e0; }}
-        .header-real {{ background-color: #f3e5f5; }}
         .header-mixed {{ background-color: #e0f7fa; }}
         .metadata {{ color: #777; font-size: 14px; margin-top: 20px; }}
     </style>
@@ -572,7 +569,6 @@ def generate_visualizations(args):
     MODEL_VARIANTS = [
         "d2_multiview2500",
         "multiview-GAN-dataset-complete-clipped-shifted",
-        "multiview-GAN-dataset-complete-clipped-shifted-real",
         "multiview-GAN-dataset-complete-clipped-shifted-real_mixed",
     ]
 
