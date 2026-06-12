@@ -38,25 +38,24 @@ export default function DisclaimerModal({ onAccept, isOpen, variant }: Disclaime
           {DISCLAIMER.title}
         </h2>
 
-        <div id="disclaimer-desc" className="text-slate-300 space-y-4 mb-6 leading-relaxed">
-          <p>
-            {DISCLAIMER.body1}
-          </p>
-
-          <p className="text-white font-medium">{DISCLAIMER.body2}</p>
-          <ul className="list-disc list-inside space-y-1 ml-4">
-            {DISCLAIMER.prohibited.map((item, i) => (
-              <li key={i}>{item}</li>
-            ))}
-          </ul>
-
-          <p>
-            {DISCLAIMER.body3}
-          </p>
-
-          <p className="text-slate-400 text-sm italic">
-            {DISCLAIMER.body4}
-          </p>
+        <div id="disclaimer-desc" className="text-slate-300 space-y-6 mb-6 leading-relaxed">
+          {DISCLAIMER.sections.map((section, idx) => (
+            <div key={idx} className="space-y-2">
+              {section.heading && (
+                <h3 className="text-white font-bold text-lg">{section.heading}</h3>
+              )}
+              <p className={section.heading === 'Acknowledgment' ? 'text-white font-medium italic' : ''}>
+                {section.content}
+              </p>
+              {section.bullets && (
+                <ul className={`list-disc list-inside space-y-1 ml-4 ${section.prohibited ? 'text-red-400 font-medium' : ''}`}>
+                  {section.bullets.map((bullet, bIdx) => (
+                    <li key={bIdx}>{bullet}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ))}
         </div>
 
         <button

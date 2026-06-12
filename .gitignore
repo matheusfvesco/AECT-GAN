@@ -30,3 +30,4 @@ __pycache__/
 FRONTEND/node_modules/
 comparison_plots/
 .DS_Store
+*.npz

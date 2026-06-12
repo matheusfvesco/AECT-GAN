@@ -463,10 +463,15 @@ def predict(ct_arr: np.ndarray, frontal_arr: np.ndarray, lateral_arr: np.ndarray
     print(f"[DEBUG] Loading model weights from: {weight_path}")
 
     # 1. Preprocess X-rays
+    # DICOM inputs might already be normalized to [0, 1] by XRayProcessor.
+    # Image inputs (JPEG/PNG) are now raw [0, 255].
+    x1_max = 1.0 if frontal_arr.max() <= 1.0 else 255.0
+    x2_max = 1.0 if lateral_arr.max() <= 1.0 else 255.0
+
     xray1_tensor = (
-        preprocess_xray(frontal_arr).unsqueeze(0).to(device)
+        preprocess_xray(frontal_arr, max_val=x1_max).unsqueeze(0).to(device)
     )  # Shape [1, 1, 128, 128]
-    xray2_tensor = preprocess_xray(lateral_arr).unsqueeze(0).to(device)
+    xray2_tensor = preprocess_xray(lateral_arr, max_val=x2_max).unsqueeze(0).to(device)
 
     # 2. Preprocess CT data for metrics
     ct_arr_clipped = np.clip(ct_arr, 0, 2500)
@@ -640,8 +645,11 @@ def generate_ct(
     print(f"[DEBUG] Loading model weights from: {weight_path}")
 
     # 1. Preprocess X-rays
-    xray1_tensor = preprocess_xray(frontal_arr).unsqueeze(0).to(device)
-    xray2_tensor = preprocess_xray(lateral_arr).unsqueeze(0).to(device)
+    x1_max = 1.0 if frontal_arr.max() <= 1.0 else 255.0
+    x2_max = 1.0 if lateral_arr.max() <= 1.0 else 255.0
+
+    xray1_tensor = preprocess_xray(frontal_arr, max_val=x1_max).unsqueeze(0).to(device)
+    xray2_tensor = preprocess_xray(lateral_arr, max_val=x2_max).unsqueeze(0).to(device)
 
     # 2. Sobel gradients
     grad_layer = GradLayer().to(device)

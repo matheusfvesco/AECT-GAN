@@ -226,7 +226,7 @@ def classify_and_pair_images(
                 img = Image.open(img_path).convert("L")  # Convert to grayscale
                 # Resize to fine_size x fine_size
                 img = img.resize((fine_size, fine_size), Image.LANCZOS)
-                img_arr = np.array(img).astype(np.float32) / 255.0
+                img_arr = np.array(img).astype(np.float32)
                 patient_images.append({"path": img_path, "array": img_arr})
             except Exception as e:
                 print(f"Error loading {img_path}: {e}")
@@ -298,24 +298,14 @@ def normalize_for_display(img, vmin=None, vmax=None):
     return (img - vmin) / (vmax - vmin)
 
 
-def run_inference_single(model_variant, model_root, patient_data, opt):
+def get_initialized_model(model_variant, model_root, opt):
     """
-    Loads model weights for a given variant and runs inference on a single patient.
-    Model is loaded fresh on each call and unloaded when function returns.
-
-    Args:
-        model_variant: e.g. "d2_multiview2500"
-        model_root: root path to model weights
-        patient_data: dict with 'frontal' and 'lateral' arrays
-        opt: pre-initialized config object
-
-    Returns:
-        sample: dict with 'name', 'fake', 'frontal', 'lateral', 'model_variant'
+    Loads model weights for a given variant and returns the initialized model.
     """
     # Build load_path
     load_path = f"{model_root.rstrip('/')}/{model_variant}/checkpoint"
 
-    # Override load_path - rest of config comes from pre-built opt
+    # Override load_path
     opt_variant = copy.deepcopy(opt)
     opt_variant.load_path = load_path
 
@@ -325,7 +315,7 @@ def run_inference_single(model_variant, model_root, patient_data, opt):
     gan_model.init_process(opt_variant)
     gan_model.setup(opt_variant)
 
-    # Set to test Mode again
+    # Set to test Mode
     if "batch" in opt_variant.norm_G:
         gan_model.eval()
     elif "instance" in opt_variant.norm_G:
@@ -335,27 +325,33 @@ def run_inference_single(model_variant, model_root, patient_data, opt):
                 m.train()
     else:
         raise NotImplementedError()
+    
+    return gan_model
 
+
+def run_inference_on_sample(gan_model, patient_data, opt, model_variant):
+    """
+    Runs inference on a single patient using an already loaded model.
+    """
     # Prepare input tensors
     frontal_arr = patient_data["frontal"]["array"]
     lateral_arr = patient_data["lateral"]["array"]
 
-    # Create input dict for model
-    # CT should be 4D (B, D, H, W) - shape (1, 128, 128, 128)
+    # CT should be 4D (B, D, H, W)
     ct_tensor = torch.zeros(1, 128, 128, 128)
 
-    # Prepare xray tensors with proper normalization
-    frontal_tensor = torch.from_numpy(frontal_arr).unsqueeze(0).unsqueeze(0)  # 1x1xHxW
-    lateral_tensor = torch.from_numpy(lateral_arr).unsqueeze(0).unsqueeze(0)  # 1x1xHxW
+    # Prepare xray tensors
+    frontal_tensor = torch.from_numpy(frontal_arr).unsqueeze(0).unsqueeze(0)
+    lateral_tensor = torch.from_numpy(lateral_arr).unsqueeze(0).unsqueeze(0)
 
-    # Apply min-max normalization if specified in config
-    if hasattr(opt_variant, "XRAY1_MIN_MAX") and opt_variant.XRAY1_MIN_MAX is not None:
-        xmin, xmax = opt_variant.XRAY1_MIN_MAX
+    # Apply min-max normalization if specified
+    if hasattr(opt, "XRAY1_MIN_MAX") and opt.XRAY1_MIN_MAX is not None:
+        xmin, xmax = opt.XRAY1_MIN_MAX
         if xmax != xmin:
             frontal_tensor = (frontal_tensor - xmin) / (xmax - xmin)
 
-    if hasattr(opt_variant, "XRAY2_MIN_MAX") and opt_variant.XRAY2_MIN_MAX is not None:
-        xmin, xmax = opt_variant.XRAY2_MIN_MAX
+    if hasattr(opt, "XRAY2_MIN_MAX") and opt.XRAY2_MIN_MAX is not None:
+        xmin, xmax = opt.XRAY2_MIN_MAX
         if xmax != xmin:
             lateral_tensor = (lateral_tensor - xmin) / (xmax - xmin)
 
@@ -363,13 +359,9 @@ def run_inference_single(model_variant, model_root, patient_data, opt):
     frontal_tensor = torch.clamp(frontal_tensor, 0, 1)
     lateral_tensor = torch.clamp(lateral_tensor, 0, 1)
 
-    xray_tuple = (frontal_tensor, lateral_tensor)
-
-    # Create paths
+    # Set input to model
     frontal_path = str(patient_data["frontal"]["path"])
     lateral_path = str(patient_data["lateral"]["path"])
-
-    # Set input to model
     gan_model.set_input(
         (ct_tensor, (frontal_tensor, lateral_tensor), frontal_path, lateral_path)
     )
@@ -384,30 +376,17 @@ def run_inference_single(model_variant, model_root, patient_data, opt):
     generate_CT = visuals["G_fake"].data.clone().cpu().numpy()
 
     # Transpose and unnormalize
-    if "std" in opt_variant.dataset_class or "baseline" in opt_variant.dataset_class:
+    if "std" in opt.dataset_class or "baseline" in opt.dataset_class:
         generate_CT_transpose = generate_CT
     else:
         generate_CT_transpose = np.transpose(generate_CT, (0, 2, 1, 3))
 
     generate_CT_transpose = tensor_back_to_unnormalization(
-        generate_CT_transpose, opt_variant.CT_MEAN_STD[0], opt_variant.CT_MEAN_STD[1]
+        generate_CT_transpose, opt.CT_MEAN_STD[0], opt.CT_MEAN_STD[1]
     )
     generate_CT_transpose = np.clip(generate_CT_transpose, 0, 1)
 
-    sample = {
-        "name": patient_data["patient_id"],
-        "fake": generate_CT_transpose[0],
-        "frontal": frontal_arr,
-        "lateral": lateral_arr,
-        "note": patient_data.get("note"),
-        "model_variant": model_variant,
-    }
-
-    del gan_model, visuals
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-
-    return sample
+    return generate_CT_transpose[0]
 
 
 def create_pdf_visualization(samples, output_path, checkpoint_num):
@@ -416,16 +395,19 @@ def create_pdf_visualization(samples, output_path, checkpoint_num):
     - Top row: frontal and lateral xrays
     - Below: Generated CT from 4 model variants side-by-side (Original | Synthetic | Real | Mixed)
     """
-    # Group samples by patient name - each group has 4 variants
+    # Group samples by patient name - each group has variants
     grouped = OrderedDict()
-    for sample in samples:
-        name = sample["name"]
+    for sample_meta in samples:
+        name = sample_meta["name"]
         if name not in grouped:
             grouped[name] = []
-        grouped[name].append(sample)
+        grouped[name].append(sample_meta)
 
     with PdfPages(str(output_path)) as pdf:
-        for name, variant_samples in tqdm(grouped.items(), desc="Creating PDF pages"):
+        for name, variant_metas in tqdm(grouped.items(), desc="Creating PDF pages"):
+            # Load full data for all variants of this patient
+            variant_samples = [load_sample_data(m) for m in variant_metas]
+            
             # Build dict keyed by variant for easy access
             by_variant = {s["model_variant"]: s for s in variant_samples}
 
@@ -492,12 +474,12 @@ def create_pdf_visualization(samples, output_path, checkpoint_num):
                 ax_x2.text(0.5, 0.5, "No Lateral X-Ray", ha="center", va="center")
                 ax_x2.axis("off")
 
-            # CT slices: each row has 3 columns [Model C | Model E | Model M]
+            # CT slices: each row has columns for models
             gs_ct = fig.add_gridspec(
                 nrows=n_slices,
-                ncols=3,
+                ncols=len(MODEL_VARIANTS),
                 height_ratios=[1.0] * n_slices,
-                width_ratios=[1, 1, 1],
+                width_ratios=[1] * len(MODEL_VARIANTS),
                 hspace=0.15,
                 wspace=0.05,
                 top=0.85,
@@ -546,21 +528,24 @@ def create_html_visualization(samples, output_dir, checkpoint_num):
     - Frontal and lateral xray images
     - Generated CT from 4 model variants side-by-side
     """
-    # Group samples by patient name - each group has 4 variants
+    # Group samples by patient name - each group has variants
     grouped = OrderedDict()
-    for sample in samples:
-        name = sample["name"]
+    for sample_meta in samples:
+        name = sample_meta["name"]
         if name not in grouped:
             grouped[name] = []
-        grouped[name].append(sample)
+        grouped[name].append(sample_meta)
 
     # Create main output directory
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    for name, variant_samples in tqdm(
+    for name, variant_metas in tqdm(
         grouped.items(), desc="Creating HTML per patient"
     ):
+        # Load full data for all variants of this patient
+        variant_samples = [load_sample_data(m) for m in variant_metas]
+        
         # Build dict keyed by variant for easy access
         by_variant = {s["model_variant"]: s for s in variant_samples}
 
@@ -620,8 +605,11 @@ def create_html_visualization(samples, output_dir, checkpoint_num):
                     all_min = min(all_min, np.nanmin(fake_slice))
                     all_max = max(all_max, np.nanmax(fake_slice))
 
-            # Save 4 variant slices side-by-side
-            fig, axes = plt.subplots(1, 4, figsize=(20, 5))
+            # Save all variant slices side-by-side
+            fig, axes = plt.subplots(1, len(MODEL_VARIANTS), figsize=(5 * len(MODEL_VARIANTS), 5))
+            if len(MODEL_VARIANTS) == 1:
+                axes = [axes]
+                
             for col_idx, (variant_key, label) in enumerate(MODEL_VARIANTS):
                 if variant_key in variant_slices:
                     axes[col_idx].imshow(
@@ -732,32 +720,73 @@ def get_checkpoint_path(result_dir, checkpoint_num):
     return result_dir / f"checkpoint_{checkpoint_num}.pkl"
 
 
-def save_checkpoint(result_dir, checkpoint_num, samples, processed_keys):
-    """Save current progress to checkpoint file."""
+def save_checkpoint(result_dir, checkpoint_num, metadata, processed_keys):
+    """Save current progress to checkpoint file atomically."""
     checkpoint_path = get_checkpoint_path(result_dir, checkpoint_num)
+    temp_path = checkpoint_path.with_suffix(".tmp")
+    
     # Convert sets to lists for pickling
     checkpoint_data = {
-        "samples": samples,
+        "metadata": metadata,
         "processed_keys": [list(k) for k in processed_keys],
     }
-    with open(checkpoint_path, "wb") as f:
-        pickle.dump(checkpoint_data, f)
-    print(f"Checkpoint saved: {checkpoint_path} ({len(samples)} samples)")
+    
+    try:
+        with open(temp_path, "wb") as f:
+            pickle.dump(checkpoint_data, f)
+        os.replace(temp_path, checkpoint_path)
+        print(f"Checkpoint saved: {checkpoint_path} ({len(metadata)} entries)")
+    except Exception as e:
+        print(f"Error saving checkpoint: {e}")
 
 
 def load_checkpoint(result_dir, checkpoint_num):
     """Load progress from checkpoint file if it exists."""
     checkpoint_path = get_checkpoint_path(result_dir, checkpoint_num)
     if checkpoint_path.exists():
-        with open(checkpoint_path, "rb") as f:
-            checkpoint_data = pickle.load(f)
-        # Convert lists back to sets
-        processed_keys = {tuple(k) for k in checkpoint_data["processed_keys"]}
-        print(
-            f"Loaded checkpoint: {checkpoint_path} ({len(checkpoint_data['samples'])} samples already processed)"
-        )
-        return checkpoint_data["samples"], processed_keys
+        try:
+            with open(checkpoint_path, "rb") as f:
+                checkpoint_data = pickle.load(f)
+            
+            # Handle legacy checkpoints (if they exist and are not corrupted)
+            if "samples" in checkpoint_data:
+                print("Found legacy checkpoint with embedded samples. This may be large.")
+                # We'll return it as is, but the new code will use metadata/processed_keys
+                # This helps if the user had a small but valid legacy checkpoint.
+                return checkpoint_data["samples"], {tuple(k) for k in checkpoint_data["processed_keys"]}
+
+            # New format
+            processed_keys = {tuple(k) for k in checkpoint_data["processed_keys"]}
+            print(
+                f"Loaded checkpoint: {checkpoint_path} ({len(processed_keys)} keys already processed)"
+            )
+            return checkpoint_data.get("metadata", []), processed_keys
+        except (pickle.UnpicklingError, EOFError, AttributeError) as e:
+            print(f"Warning: Checkpoint file {checkpoint_path} is corrupted ({e}). Starting fresh.")
+            # Move corrupted file to backup
+            backup_path = checkpoint_path.with_suffix(".corrupted")
+            try:
+                os.replace(checkpoint_path, backup_path)
+                print(f"Corrupted checkpoint backed up to {backup_path}")
+            except:
+                pass
     return [], set()
+
+
+def load_sample_data(sample_metadata):
+    """Loads raw data from .npz file for a sample."""
+    if "npz_path" in sample_metadata:
+        try:
+            data = np.load(sample_metadata["npz_path"])
+            # Create a combined dict like the old sample format
+            sample = sample_metadata.copy()
+            sample["fake"] = data["fake"]
+            sample["frontal"] = data["frontal"]
+            sample["lateral"] = data["lateral"]
+            return sample
+        except Exception as e:
+            print(f"Error loading sample data from {sample_metadata['npz_path']}: {e}")
+    return sample_metadata
 
 
 def generate_visualizations(args):
@@ -850,40 +879,87 @@ def generate_visualizations(args):
     result_dir.mkdir(parents=True, exist_ok=True)
 
     # Load checkpoint if exists for resuming after interruption
-    samples, processed_keys = load_checkpoint(result_dir, checkpoint_num)
+    metadata, processed_keys = load_checkpoint(result_dir, checkpoint_num)
 
-    # For each patient, run inference with all model variants
-    for patient_data in tqdm(paired_samples, desc="Processing patients"):
-        patient_id = patient_data["patient_id"]
+    samples_dir = result_dir / "samples"
+    samples_dir.mkdir(parents=True, exist_ok=True)
 
-        # Process all 4 variants for this patient
-        for model_variant, _ in MODEL_VARIANTS:
+    # For each model variant, load it once and process all patients
+    for model_variant, label in MODEL_VARIANTS:
+        # Check if there are any patients left to process for this variant
+        remaining_patients = [
+            p for p in paired_samples 
+            if (p["patient_id"], model_variant) not in processed_keys
+        ]
+        
+        if not remaining_patients:
+            print(f"All patients already processed for {label} ({model_variant})")
+            continue
+
+        print(f"Loading model variant: {label} ({model_variant})...")
+        try:
+            gan_model = get_initialized_model(
+                model_variant=model_variant,
+                model_root=args.model_root,
+                opt=opt
+            )
+        except Exception as e:
+            print(f"Failed to load model variant {model_variant}: {e}")
+            continue
+
+        for patient_data in tqdm(remaining_patients, desc=f"Processing {label}"):
+            patient_id = patient_data["patient_id"]
             key = (patient_id, model_variant)
 
-            # Skip if already processed (resume support)
-            if key in processed_keys:
-                continue
-
             try:
-                sample = run_inference_single(
-                    model_variant=model_variant,
-                    model_root=args.model_root,
+                # Run inference
+                fake_ct = run_inference_on_sample(
+                    gan_model=gan_model,
                     patient_data=patient_data,
                     opt=opt,
+                    model_variant=model_variant
                 )
-                samples.append(sample)
-                processed_keys.add(key)
-            except Exception as e:
-                print(
-                    f"Error processing {patient_id} with variant {model_variant}: {e}"
-                )
-                import traceback
 
+                # Save results to .npz file
+                npz_path = samples_dir / f"{patient_id}_{model_variant}.npz"
+                np.savez_compressed(
+                    npz_path,
+                    fake=fake_ct,
+                    frontal=patient_data["frontal"]["array"],
+                    lateral=patient_data["lateral"]["array"]
+                )
+
+                # Add to metadata
+                entry = {
+                    "name": patient_id,
+                    "model_variant": model_variant,
+                    "npz_path": str(npz_path),
+                    "note": patient_data.get("note")
+                }
+                metadata.append(entry)
+                processed_keys.add(key)
+                
+                # Periodically save checkpoint (every 10 patients)
+                if len(processed_keys) % 10 == 0:
+                    save_checkpoint(result_dir, checkpoint_num, metadata, processed_keys)
+
+            except Exception as e:
+                print(f"Error processing {patient_id} with variant {model_variant}: {e}")
+                import traceback
                 traceback.print_exc()
                 continue
 
-        # Save checkpoint after each patient (all variants processed)
-        save_checkpoint(result_dir, checkpoint_num, samples, processed_keys)
+        # Cleanup model memory
+        del gan_model
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        
+        # Save checkpoint after each variant
+        save_checkpoint(result_dir, checkpoint_num, metadata, processed_keys)
+
+    # Convert metadata to full sample list for visualization functions
+    # (they will load data from npz as needed)
+    samples = metadata 
 
     if len(samples) == 0:
         print("No samples generated. Exiting.")

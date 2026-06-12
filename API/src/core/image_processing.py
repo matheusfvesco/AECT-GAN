@@ -47,7 +47,7 @@ def load_image_xray(file_path: Path) -> np.ndarray:
         raise HTTPException(status_code=400, detail=f"Failed to read image: {file_path}")
     # Resize to 256x256 to match XRayProcessor
     img_resized = cv2.resize(img, (256, 256))
-    return img_resized.astype(np.float32) / 255.0
+    return img_resized.astype(np.float32)
 
 
 def classify_images_by_view(image_files: list[Path]) -> tuple[Path, Path]:

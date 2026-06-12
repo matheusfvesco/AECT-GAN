@@ -156,7 +156,7 @@ def classify_and_pair_images(patient_groups, classifier_weights, cache_path, fin
                 img = Image.open(img_path).convert('L')  # Convert to grayscale
                 # Resize to fine_size x fine_size
                 img = img.resize((fine_size, fine_size), Image.LANCZOS)
-                img_arr = np.array(img).astype(np.float32) / 255.0
+                img_arr = np.array(img).astype(np.float32)
                 patient_images.append({
                     'path': img_path,
                     'array': img_arr
@@ -228,11 +228,13 @@ def prepare_xray_tensors(frontal_img, lateral_img, opt):
     # If MIN_MAX normalization is specified
     if hasattr(opt, 'XRAY1_MIN_MAX') and opt.XRAY1_MIN_MAX is not None:
         xmin, xmax = opt.XRAY1_MIN_MAX
-        frontal_tensor = (frontal_tensor - xmin) / (xmax - xmin) if xmax != xmin else frontal_tensor
+        if xmax != xmin:
+            frontal_tensor = (frontal_tensor - xmin) / (xmax - xmin)
 
     if hasattr(opt, 'XRAY2_MIN_MAX') and opt.XRAY2_MIN_MAX is not None:
         xmin, xmax = opt.XRAY2_MIN_MAX
-        lateral_tensor = (lateral_tensor - xmin) / (xmax - xmin) if xmax != xmin else lateral_tensor
+        if xmax != xmin:
+            lateral_tensor = (lateral_tensor - xmin) / (xmax - xmin)
 
     # Create dummy CT tensor (the model doesn't use it for inference)
     ct_tensor = torch.zeros(1, 1, 128, 128, 128)

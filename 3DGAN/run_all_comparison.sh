@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Generate comparison visuals - all 4 model variants on the same dataset
+# Generate comparison visuals - all 3 model variants on the same dataset
 # The script iterates over variants internally
 
 ## Run on real dataset (GAN-dataset-complete-clipped-shifted-real) with real_test.txt

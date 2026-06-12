@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+set -e
+
 # Test eaach model on its own test subset
 
 ## original
@@ -37,20 +39,20 @@ python3 test.py \
 
 ## real
 
-python3 test.py \
-  --ymlpath=./experiment/multiview2500/d2_multiview2500.yml \
-  --gpu=0 \
-  --dataroot=./data/GAN-dataset-complete-clipped-shifted-real \
-  --dataset=test \
-  --tag=multiview-GAN-dataset-complete-clipped-shifted-real \
-  --data=data/chengsq/AECT-GAN/model_dic/MultiView-AECT-GAN \
-  --dataset_class=align_ct_xray_views_std \
-  --model_class=MultiView-AECT-GAN \
-  --datasetfile=./data/real_test.txt \
-  --resultdir=./save_models/multiView_CTGAN \
-  --check_point=90 \
-  --how_many=3 \
-  --load_path=./save_models/multiView_CTGAN/data/chengsq/AECT-GAN/model_dic/MultiView-AECT-GAN/multiview-GAN-dataset-complete-clipped-shifted-real/checkpoint
+#python3 test.py \
+#  --ymlpath=./experiment/multiview2500/d2_multiview2500.yml \
+#  --gpu=0 \
+#  --dataroot=./data/GAN-dataset-complete-clipped-shifted-real \
+#  --dataset=test \
+#  --tag=multiview-GAN-dataset-complete-clipped-shifted-real \
+#  --data=data/chengsq/AECT-GAN/model_dic/MultiView-AECT-GAN \
+#  --dataset_class=align_ct_xray_views_std \
+#  --model_class=MultiView-AECT-GAN \
+#  --datasetfile=./data/real_test.txt \
+#  --resultdir=./save_models/multiView_CTGAN \
+#  --check_point=90 \
+#  --how_many=3 \
+#  --load_path=./save_models/multiView_CTGAN/data/chengsq/AECT-GAN/model_dic/MultiView-AECT-GAN/multiview-GAN-dataset-complete-clipped-shifted-real/checkpoint
 
 ## mixed
 
@@ -107,20 +109,20 @@ python3 test.py \
 
 ## real (DO NOT USE, BASICALLY THE SAME AS THE EACH MODEL ON ITS OWN SUBSET)
 
-python3 test.py \
-  --ymlpath=./experiment/multiview2500/d2_multiview2500.yml \
-  --gpu=0 \
-  --dataroot=./data/GAN-dataset-complete-clipped-shifted-real \
-  --dataset=test \
-  --tag=multiview-GAN-dataset-complete-clipped-shifted-real-real-test \
-  --data=data/chengsq/AECT-GAN/model_dic/MultiView-AECT-GAN \
-  --dataset_class=align_ct_xray_views_std \
-  --model_class=MultiView-AECT-GAN \
-  --datasetfile=./data/real_test.txt \
-  --resultdir=./save_models/multiView_CTGAN \
-  --check_point=90 \
-  --how_many=3 \
-  --load_path=./save_models/multiView_CTGAN/data/chengsq/AECT-GAN/model_dic/MultiView-AECT-GAN/multiview-GAN-dataset-complete-clipped-shifted-real/checkpoint
+#python3 test.py \
+#  --ymlpath=./experiment/multiview2500/d2_multiview2500.yml \
+#  --gpu=0 \
+#  --dataroot=./data/GAN-dataset-complete-clipped-shifted-real \
+#  --dataset=test \
+#  --tag=multiview-GAN-dataset-complete-clipped-shifted-real-real-test \
+#  --data=data/chengsq/AECT-GAN/model_dic/MultiView-AECT-GAN \
+#  --dataset_class=align_ct_xray_views_std \
+#  --model_class=MultiView-AECT-GAN \
+#  --datasetfile=./data/real_test.txt \
+#  --resultdir=./save_models/multiView_CTGAN \
+#  --check_point=90 \
+#  --how_many=3 \
+#  --load_path=./save_models/multiView_CTGAN/data/chengsq/AECT-GAN/model_dic/MultiView-AECT-GAN/multiview-GAN-dataset-complete-clipped-shifted-real/checkpoint
 
 ## mixed
 

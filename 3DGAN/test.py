@@ -335,16 +335,29 @@ def evaluate(args):
             # Get input xrays from visuals (try common keys)
             xray1 = None
             xray2 = None
-            if "xray1" in visuals:
+            if "G_input1" in visuals:
+                xray1 = (
+                    visuals["G_input1"].data.clone().cpu().numpy()[0].astype(np.float32)
+                )
+            elif "xray1" in visuals:
                 xray1 = (
                     visuals["xray1"].data.clone().cpu().numpy()[0].astype(np.float32)
                 )
-            if "xray2" in visuals:
+                
+            if "G_input2" in visuals:
+                xray2 = (
+                    visuals["G_input2"].data.clone().cpu().numpy()[0].astype(np.float32)
+                )
+            elif "xray2" in visuals:
                 xray2 = (
                     visuals["xray2"].data.clone().cpu().numpy()[0].astype(np.float32)
                 )
-            if xray1 is None and "xray" in visuals:
-                xray1 = visuals["xray"].data.clone().cpu().numpy()[0].astype(np.float32)
+                
+            if xray1 is None:
+                if "G_input" in visuals:
+                    xray1 = visuals["G_input"].data.clone().cpu().numpy()[0].astype(np.float32)
+                elif "xray" in visuals:
+                    xray1 = visuals["xray"].data.clone().cpu().numpy()[0].astype(np.float32)
 
             out_dir = (
                 Path("outputs")

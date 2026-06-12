@@ -211,7 +211,7 @@ def classify_and_pair_images(
             try:
                 img = Image.open(img_path).convert("L")
                 img = img.resize((fine_size, fine_size), Image.LANCZOS)
-                img_arr = np.array(img).astype(np.float32) / 255.0
+                img_arr = np.array(img).astype(np.float32)
                 patient_images.append({"path": img_path, "array": img_arr})
             except Exception as e:
                 print(f"Error loading {img_path}: {e}")
@@ -384,7 +384,7 @@ def main():
         try:
             img = Image.open(img_path).convert("L")
             img = img.resize((fine_size, fine_size), Image.LANCZOS)
-            img_arr = np.array(img).astype(np.float32) / 255.0
+            img_arr = np.array(img).astype(np.float32)
             patient_images.append({"path": img_path, "array": img_arr, "name": f})
         except Exception as e:
             print(f"Error loading {img_path}: {e}")
